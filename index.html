@@ -147,7 +147,7 @@
 <button class="toggle" onclick="toggleMode()">🌗</button>
 
 <header>
-  <h1>Hi, I'm [Your Name]</h1>
+  <h1>Hi, I'm Saaketh</h1>
   <p>Python Game Developer • Problem Solver</p>
 </header>
 
@@ -211,7 +211,13 @@ function openModal(name){
   const content = document.getElementById("modal-content");
 
   if(name==="word"){
-    content.innerHTML = "<h2>Word Game</h2><p>Uses file-based dataset, hint system, and filtering logic.</p>";
+    content.innerHTML = `
+    <h2>🎮 Word Guessing Game</h2>
+    <p><b>Concept:</b> A logic-based word guessing game using a dataset.</p>
+    <p><b>Features:</b> Hint system, filtering logic, file-based words.</p>
+    <p><b>What I learned:</b> File handling and algorithms.</p>
+    <a href="https://github.com/Saaketh575/word-game" target="_blank">View Code</a>
+  `;
   } else {
     content.innerHTML = "<h2>War Game</h2><p>AI opponent using combinations and probability logic.</p>";
   }
