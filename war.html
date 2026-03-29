@@ -26,6 +26,8 @@
 
     .card:hover { transform:scale(1.1); }
 
+    .selected { border:3px solid yellow; }
+
     button {
       padding:10px 20px;
       margin:10px;
@@ -91,7 +93,7 @@
       border-radius:16px;
     }
 
-    /* CINEMATIC COMPUTER */
+    /* COMPUTER TURN */
     #compOverlay {
       position:fixed;
       top:0;
@@ -140,15 +142,19 @@
   <div id="discardTop"></div>
 </div>
 
+<h3>Your Melds</h3>
+<div id="melds"></div>
+
 <div>
   <button onclick="drawDeck()">Draw Deck</button>
+  <button onclick="checkMeld()">Check Meld</button>
 </div>
 
 <p id="log"></p>
 
 </div>
 
-<!-- MODAL -->
+<!-- DISCARD MODAL -->
 <div class="modal" id="discardModal">
   <div class="modal-content">
     <h3 id="discardText"></h3>
@@ -157,7 +163,7 @@
   </div>
 </div>
 
-<!-- COMPUTER OVERLAY -->
+<!-- COMPUTER TURN -->
 <div id="compOverlay">
   <div id="compText">🤖 Thinking...</div>
   <div id="compCard"></div>
@@ -165,15 +171,18 @@
 
 <script>
 
-// DATA
+// ---------- DATA ----------
 const cards=["2","3","4","5","6","7","8","9","X","J","Q","K","A"];
 const suits=["♣","♦","♥","♠"];
 
 let deck=[], playerHand=[], computerHand=[], discardPile=[];
 let phase="draw";
+
+let selected=[];
+let playerMelds=[];
 let pendingDiscard=null;
 
-// INIT
+// ---------- INIT ----------
 for(let s of suits){
   for(let c of cards){
     deck.push(s+c);
@@ -185,7 +194,7 @@ playerHand=deck.splice(0,7);
 computerHand=deck.splice(0,7);
 discardPile.push(deck.pop());
 
-// RENDER
+// ---------- RENDER ----------
 function render(){
   let hand=document.getElementById("playerHand");
   hand.innerHTML="";
@@ -195,8 +204,16 @@ function render(){
     el.className="card";
     el.innerText=card;
 
+    if(selected.includes(i)){
+      el.classList.add("selected");
+    }
+
     el.onclick=()=>{
-      if(phase==="action") openDiscard(i);
+      if(phase==="draw"){
+        selectCard(i);
+      } else {
+        openDiscard(i);
+      }
     };
 
     hand.appendChild(el);
@@ -212,9 +229,67 @@ function render(){
     m.innerText=c;
     preview.appendChild(m);
   });
+
+  document.getElementById("melds").innerHTML =
+    playerMelds.map(m=>"["+m.join(", ")+"]").join("<br>");
 }
 
-// PLAYER
+// ---------- SELECT ----------
+function selectCard(index){
+  if(selected.includes(index)){
+    selected=selected.filter(i=>i!==index);
+  } else {
+    if(selected.length<3){
+      selected.push(index);
+    }
+  }
+  render();
+}
+
+// ---------- MELD ----------
+function meldCheck(list){
+  let ranks=list.map(c=>c.slice(1));
+  let suitsList=list.map(c=>c[0]);
+
+  if(ranks[0]===ranks[1] && ranks[1]===ranks[2]) return true;
+
+  if(suitsList[0]===suitsList[1] && suitsList[1]===suitsList[2]){
+    let idxs=list.map(c=>cards.indexOf(c.slice(1))).sort((a,b)=>a-b);
+    return idxs[0]+1===idxs[1] && idxs[1]+1===idxs[2];
+  }
+  return false;
+}
+
+function checkMeld(){
+  if(phase==="draw"){
+    log("Draw first!");
+    return;
+  }
+
+  if(selected.length!==3){
+    log("Select exactly 3 cards!");
+    return;
+  }
+
+  let chosen=selected.map(i=>playerHand[i]);
+
+  if(meldCheck(chosen)){
+    log("Valid meld!");
+    playerMelds.push(chosen);
+
+    selected.sort((a,b)=>b-a).forEach(i=>{
+      playerHand.splice(i,1);
+    });
+
+  } else {
+    log("Invalid meld!");
+  }
+
+  selected=[];
+  render();
+}
+
+// ---------- DRAW ----------
 function drawDeck(){
   if(phase!=="draw") return;
   playerHand.push(deck.pop());
@@ -231,6 +306,7 @@ function drawDiscard(){
   render();
 }
 
+// ---------- DISCARD ----------
 function openDiscard(i){
   pendingDiscard=i;
   document.getElementById("discardText").innerText=
@@ -254,7 +330,7 @@ function cancelDiscard(){
   document.getElementById("discardModal").style.display="none";
 }
 
-// COMPUTER (FINAL BEHAVIOR)
+// ---------- COMPUTER ----------
 function startComputerTurn(){
 
   const overlay=document.getElementById("compOverlay");
@@ -303,12 +379,12 @@ function startComputerTurn(){
   },1200);
 }
 
-// LOG
+// ---------- LOG ----------
 function log(t){
   document.getElementById("log").innerText=t;
 }
 
-// START
+// ---------- START ----------
 render();
 
 </script>
