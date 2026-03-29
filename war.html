@@ -1,43 +1,42 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Rummy War Game</title>
+  <title>Rummy War</title>
 
   <style>
     body {
-      background: #020617;
-      color: white;
-      font-family: Arial;
-      text-align: center;
-      margin: 0;
+      background:#020617;
+      color:white;
+      font-family:Arial;
+      text-align:center;
+      margin:0;
     }
 
     .card {
-      display: inline-block;
-      padding: 12px;
-      margin: 6px;
-      background: white;
-      color: black;
-      border-radius: 10px;
-      cursor: pointer;
-      font-weight: bold;
-      transition: 0.2s;
+      display:inline-block;
+      padding:12px;
+      margin:6px;
+      background:white;
+      color:black;
+      border-radius:10px;
+      cursor:pointer;
+      font-weight:bold;
+      transition:0.2s;
     }
 
-    .card:hover { transform: scale(1.1); }
-    .selected { border: 3px solid yellow; }
+    .card:hover { transform:scale(1.1); }
 
     button {
-      padding: 10px 20px;
-      margin: 10px;
-      border-radius: 10px;
-      border: none;
-      background: #38bdf8;
-      cursor: pointer;
-      font-weight: bold;
+      padding:10px 20px;
+      margin:10px;
+      border-radius:10px;
+      border:none;
+      background:#38bdf8;
+      cursor:pointer;
+      font-weight:bold;
     }
 
-    #log { margin-top: 20px; }
+    #log { margin-top:20px; }
 
     /* DISCARD */
     .discard-box {
@@ -47,76 +46,82 @@
       border-radius:12px;
       cursor:pointer;
       min-width:100px;
-      position: relative;
-      transition: 0.3s;
+      position:relative;
+      transition:0.3s;
     }
 
     .discard-box:hover {
-      transform: scale(1.05);
-      box-shadow: 0 0 20px #38bdf8;
+      transform:scale(1.05);
+      box-shadow:0 0 20px #38bdf8;
       background:#334155;
     }
 
     .stack-preview {
-      position: absolute;
-      top: -10px;
-      left: 10px;
-      display: flex;
-      gap: 5px;
+      position:absolute;
+      top:-10px;
+      left:10px;
+      display:flex;
+      gap:5px;
     }
 
     .mini-card {
-      background: #94a3b8;
-      color: black;
-      padding: 3px 6px;
-      border-radius: 6px;
-      font-size: 10px;
+      background:#94a3b8;
+      color:black;
+      padding:3px 6px;
+      border-radius:6px;
+      font-size:10px;
     }
 
-    /* FULLSCREEN COMPUTER TURN */
+    /* MODAL */
+    .modal {
+      position:fixed;
+      top:0;
+      left:0;
+      width:100%;
+      height:100%;
+      background:rgba(0,0,0,0.7);
+      display:none;
+      justify-content:center;
+      align-items:center;
+    }
+
+    .modal-content {
+      background:#1e293b;
+      padding:30px;
+      border-radius:16px;
+    }
+
+    /* CINEMATIC COMPUTER */
     #compOverlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: radial-gradient(circle, #020617, #000);
-      display: none;
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-      z-index: 9999;
-      animation: fadeIn 0.5s;
+      position:fixed;
+      top:0;
+      left:0;
+      width:100%;
+      height:100%;
+      background:radial-gradient(circle,#020617,#000);
+      display:none;
+      justify-content:center;
+      align-items:center;
+      flex-direction:column;
+      z-index:9999;
     }
 
     #compText {
-      font-size: 28px;
-      margin-bottom: 20px;
-      animation: pulse 1s infinite;
+      font-size:28px;
+      margin-bottom:20px;
+      animation:pulse 1s infinite;
     }
 
     #compCard {
-      font-size: 40px;
-      margin: 20px;
-      animation: pop 0.5s;
+      font-size:40px;
+      margin:20px;
     }
 
     @keyframes pulse {
-      0% {opacity: 0.5;}
-      50% {opacity: 1;}
-      100% {opacity: 0.5;}
+      0%{opacity:0.5;}
+      50%{opacity:1;}
+      100%{opacity:0.5;}
     }
-
-    @keyframes pop {
-      from {transform: scale(0);}
-      to {transform: scale(1);}
-    }
-
-    @keyframes fadeIn {
-      from {opacity: 0;}
-      to {opacity: 1;}
-    }
-
   </style>
 </head>
 
@@ -137,129 +142,170 @@
 
 <div>
   <button onclick="drawDeck()">Draw Deck</button>
-  <button onclick="checkMeld()">Check Meld</button>
 </div>
 
 <p id="log"></p>
 
 </div>
 
-<!-- FULLSCREEN COMPUTER TURN -->
+<!-- MODAL -->
+<div class="modal" id="discardModal">
+  <div class="modal-content">
+    <h3 id="discardText"></h3>
+    <button onclick="confirmDiscard()">Yes</button>
+    <button onclick="cancelDiscard()">No</button>
+  </div>
+</div>
+
+<!-- COMPUTER OVERLAY -->
 <div id="compOverlay">
-  <div id="compText">🤖 Computer Thinking...</div>
+  <div id="compText">🤖 Thinking...</div>
   <div id="compCard"></div>
 </div>
 
 <script>
 
 // DATA
-const cards = ["2","3","4","5","6","7","8","9","X","J","Q","K","A"];
-const suits = ["♣","♦","♥","♠"];
+const cards=["2","3","4","5","6","7","8","9","X","J","Q","K","A"];
+const suits=["♣","♦","♥","♠"];
 
-let deck = [];
-let playerHand = [];
-let computerHand = [];
-let discardPile = [];
-
-let phase = "draw";
+let deck=[], playerHand=[], computerHand=[], discardPile=[];
+let phase="draw";
+let pendingDiscard=null;
 
 // INIT
-for (let s of suits){
-  for (let c of cards){
+for(let s of suits){
+  for(let c of cards){
     deck.push(s+c);
   }
 }
-
 deck.sort(()=>Math.random()-0.5);
 
-playerHand = deck.splice(0,7);
-computerHand = deck.splice(0,7);
+playerHand=deck.splice(0,7);
+computerHand=deck.splice(0,7);
 discardPile.push(deck.pop());
 
 // RENDER
 function render(){
-  let handDiv = document.getElementById("playerHand");
-  handDiv.innerHTML = "";
+  let hand=document.getElementById("playerHand");
+  hand.innerHTML="";
 
-  playerHand.forEach(card=>{
-    let el = document.createElement("div");
-    el.className = "card";
-    el.innerText = card;
-    el.onclick = ()=> discardCard(card);
-    handDiv.appendChild(el);
+  playerHand.forEach((card,i)=>{
+    let el=document.createElement("div");
+    el.className="card";
+    el.innerText=card;
+
+    el.onclick=()=>{
+      if(phase==="action") openDiscard(i);
+    };
+
+    hand.appendChild(el);
   });
 
-  document.getElementById("discardTop").innerText = discardPile[0] || "Empty";
+  document.getElementById("discardTop").innerText=discardPile[0]||"Empty";
 
-  let preview = document.getElementById("stackPreview");
-  preview.innerHTML = "";
+  let preview=document.getElementById("stackPreview");
+  preview.innerHTML="";
   discardPile.slice(1,4).forEach(c=>{
-    let mini = document.createElement("div");
-    mini.className="mini-card";
-    mini.innerText=c;
-    preview.appendChild(mini);
+    let m=document.createElement("div");
+    m.className="mini-card";
+    m.innerText=c;
+    preview.appendChild(m);
   });
 }
 
 // PLAYER
 function drawDeck(){
-  if(phase !== "draw") return;
+  if(phase!=="draw") return;
   playerHand.push(deck.pop());
-  phase = "discard";
+  phase="action";
+  log("Play or discard");
   render();
 }
 
 function drawDiscard(){
-  if(phase !== "draw") return;
+  if(phase!=="draw") return;
   playerHand.push(discardPile.shift());
-  phase = "discard";
+  phase="action";
+  log("Took from discard");
   render();
 }
 
-function discardCard(card){
-  if(phase !== "discard") return;
-
-  playerHand.splice(playerHand.indexOf(card),1);
-  discardPile.unshift(card);
-
-  phase = "draw";
-
-  startComputerTurn();
+function openDiscard(i){
+  pendingDiscard=i;
+  document.getElementById("discardText").innerText=
+    "Discard "+playerHand[i]+"?";
+  document.getElementById("discardModal").style.display="flex";
 }
 
-// CINEMATIC COMPUTER TURN
+function confirmDiscard(){
+  let card=playerHand.splice(pendingDiscard,1)[0];
+  discardPile.unshift(card);
+
+  document.getElementById("discardModal").style.display="none";
+
+  phase="draw";
+  log("You discarded "+card);
+
+  setTimeout(startComputerTurn,800);
+}
+
+function cancelDiscard(){
+  document.getElementById("discardModal").style.display="none";
+}
+
+// COMPUTER (FINAL BEHAVIOR)
 function startComputerTurn(){
 
-  const overlay = document.getElementById("compOverlay");
-  const text = document.getElementById("compText");
-  const cardEl = document.getElementById("compCard");
+  const overlay=document.getElementById("compOverlay");
+  const text=document.getElementById("compText");
+  const cardEl=document.getElementById("compCard");
 
-  overlay.style.display = "flex";
-  text.innerText = "🤖 Computer Thinking...";
-  cardEl.innerText = "";
+  overlay.style.display="flex";
+  text.innerText="🤖 Computer Thinking...";
+  cardEl.innerText="";
 
   setTimeout(()=>{
-    let drawn = deck.pop();
-    computerHand.push(drawn);
 
-    text.innerText = "🤖 Computer draws";
-    cardEl.innerText = drawn;
+    let fromDiscard=Math.random()<0.5 && discardPile.length>0;
+    let drawn;
+
+    if(fromDiscard){
+      drawn=discardPile.shift();
+      computerHand.push(drawn);
+      text.innerText="🤖 Computer takes from discard pile";
+    }else{
+      drawn=deck.pop();
+      computerHand.push(drawn);
+      text.innerText="🤖 Computer draws from deck";
+    }
+
+    cardEl.innerText="🂠";
 
     setTimeout(()=>{
-      let discard = computerHand.shift();
+
+      let discard=computerHand.shift();
+
+      text.innerText="🤖 Computer discards:";
+      cardEl.innerText=discard;
+
       discardPile.unshift(discard);
 
-      text.innerText = "🤖 Computer plays";
-      cardEl.innerText = discard;
-
       setTimeout(()=>{
-        overlay.style.display = "none";
+        overlay.style.display="none";
+        phase="draw";
+        log("Your turn");
         render();
       },1000);
 
     },1000);
 
   },1200);
+}
+
+// LOG
+function log(t){
+  document.getElementById("log").innerText=t;
 }
 
 // START
