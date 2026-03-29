@@ -9,6 +9,7 @@
       color: white;
       font-family: Arial;
       text-align: center;
+      margin: 0;
     }
 
     .card {
@@ -24,7 +25,6 @@
     }
 
     .card:hover { transform: scale(1.1); }
-
     .selected { border: 3px solid yellow; }
 
     button {
@@ -37,15 +37,9 @@
       font-weight: bold;
     }
 
-    #log { margin-top: 20px; min-height: 30px; }
+    #log { margin-top: 20px; }
 
-    #computerStatus {
-      margin-top: 10px;
-      color: #38bdf8;
-      font-weight: bold;
-    }
-
-    /* DISCARD ELITE */
+    /* DISCARD */
     .discard-box {
       display:inline-block;
       padding:20px;
@@ -79,27 +73,50 @@
       font-size: 10px;
     }
 
-    /* MODAL */
-    .modal {
+    /* FULLSCREEN COMPUTER TURN */
+    #compOverlay {
       position: fixed;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0,0,0,0.7);
+      background: radial-gradient(circle, #020617, #000);
       display: none;
       justify-content: center;
       align-items: center;
+      flex-direction: column;
+      z-index: 9999;
+      animation: fadeIn 0.5s;
     }
 
-    .modal-content {
-      background: #1e293b;
-      padding: 30px;
-      border-radius: 16px;
+    #compText {
+      font-size: 28px;
+      margin-bottom: 20px;
+      animation: pulse 1s infinite;
     }
 
-    /* WAR */
-    #warZone { display: none; margin-top: 30px; }
+    #compCard {
+      font-size: 40px;
+      margin: 20px;
+      animation: pop 0.5s;
+    }
+
+    @keyframes pulse {
+      0% {opacity: 0.5;}
+      50% {opacity: 1;}
+      100% {opacity: 0.5;}
+    }
+
+    @keyframes pop {
+      from {transform: scale(0);}
+      to {transform: scale(1);}
+    }
+
+    @keyframes fadeIn {
+      from {opacity: 0;}
+      to {opacity: 1;}
+    }
+
   </style>
 </head>
 
@@ -112,19 +129,11 @@
 <h3>Your Hand</h3>
 <div id="playerHand"></div>
 
-<!-- DISCARD -->
 <h3>🗂 Discard Pile</h3>
-<p style="color:#94a3b8; font-size:14px;">
-  Pick up the top card from here instead of drawing from the deck.
-</p>
-
 <div id="discard" class="discard-box" onclick="drawDiscard()">
   <div id="stackPreview" class="stack-preview"></div>
   <div id="discardTop"></div>
 </div>
-
-<h3>Your Melds</h3>
-<div id="melds"></div>
 
 <div>
   <button onclick="drawDeck()">Draw Deck</button>
@@ -132,29 +141,18 @@
 </div>
 
 <p id="log"></p>
-<div id="computerStatus"></div>
 
 </div>
 
-<!-- WAR -->
-<div id="warZone">
-  <h2>⚔️ WAR!</h2>
-  <div id="warCards"></div>
-  <button onclick="playWar()">Play War Round</button>
-</div>
-
-<!-- MODAL -->
-<div class="modal" id="discardModal">
-  <div class="modal-content">
-    <h3 id="discardText"></h3>
-    <button onclick="confirmDiscard()">Yes</button>
-    <button onclick="cancelDiscard()">No</button>
-  </div>
+<!-- FULLSCREEN COMPUTER TURN -->
+<div id="compOverlay">
+  <div id="compText">🤖 Computer Thinking...</div>
+  <div id="compCard"></div>
 </div>
 
 <script>
 
-// ---------- DATA ----------
+// DATA
 const cards = ["2","3","4","5","6","7","8","9","X","J","Q","K","A"];
 const suits = ["♣","♦","♥","♠"];
 
@@ -163,18 +161,9 @@ let playerHand = [];
 let computerHand = [];
 let discardPile = [];
 
-let playerMelds = [];
-let selected = [];
-
-let playerTurn = true;
 let phase = "draw";
 
-let pendingDiscardIndex = null;
-
-// WAR
-let warPile = [];
-
-// ---------- INIT ----------
+// INIT
 for (let s of suits){
   for (let c of cards){
     deck.push(s+c);
@@ -187,258 +176,93 @@ playerHand = deck.splice(0,7);
 computerHand = deck.splice(0,7);
 discardPile.push(deck.pop());
 
-// ---------- RENDER ----------
+// RENDER
 function render(){
   let handDiv = document.getElementById("playerHand");
   handDiv.innerHTML = "";
 
-  playerHand.forEach((card, index)=>{
+  playerHand.forEach(card=>{
     let el = document.createElement("div");
     el.className = "card";
     el.innerText = card;
-
-    if(selected.includes(index)){
-      el.classList.add("selected");
-    }
-
-    el.onclick = ()=>{
-      if(phase !== "draw"){
-        openDiscardModal(index);
-      } else {
-        selectCard(index);
-      }
-    };
-
+    el.onclick = ()=> discardCard(card);
     handDiv.appendChild(el);
   });
 
-  // DISCARD UI
-  let topEl = document.getElementById("discardTop");
-  let previewEl = document.getElementById("stackPreview");
+  document.getElementById("discardTop").innerText = discardPile[0] || "Empty";
 
-  topEl.innerText = discardPile[0] || "Empty";
-
-  previewEl.innerHTML = "";
-  discardPile.slice(1,4).forEach(card=>{
+  let preview = document.getElementById("stackPreview");
+  preview.innerHTML = "";
+  discardPile.slice(1,4).forEach(c=>{
     let mini = document.createElement("div");
-    mini.className = "mini-card";
-    mini.innerText = card;
-    previewEl.appendChild(mini);
+    mini.className="mini-card";
+    mini.innerText=c;
+    preview.appendChild(mini);
   });
-
-  document.getElementById("melds").innerHTML =
-    playerMelds.map(m => "[" + m.join(", ") + "]").join("<br>");
 }
 
-// ---------- SELECT ----------
-function selectCard(index){
-  if(selected.includes(index)){
-    selected = selected.filter(i=>i!==index);
-  } else {
-    if(selected.length < 3){
-      selected.push(index);
-    }
-  }
-  render();
-}
-
-// ---------- MELD ----------
-function meldCheck(list){
-  let ranks = list.map(c=>c.slice(1));
-  let suitsList = list.map(c=>c[0]);
-
-  if(ranks[0] === ranks[1] && ranks[1] === ranks[2]) return true;
-
-  if(suitsList[0] === suitsList[1] && suitsList[1] === suitsList[2]){
-    let idxs = list.map(c=>cards.indexOf(c.slice(1))).sort((a,b)=>a-b);
-    return idxs[0]+1===idxs[1] && idxs[1]+1===idxs[2];
-  }
-
-  return false;
-}
-
-function checkMeld(){
-  if(phase === "draw"){
-    log("Draw first!");
-    return;
-  }
-
-  if(selected.length !== 3){
-    log("Select exactly 3 cards!");
-    return;
-  }
-
-  let chosen = selected.map(i=>playerHand[i]);
-
-  if(meldCheck(chosen)){
-    log("Valid meld!");
-    playerMelds.push(chosen);
-
-    selected.sort((a,b)=>b-a).forEach(i=>{
-      playerHand.splice(i,1);
-    });
-
-  } else {
-    log("Invalid meld → WAR!");
-    startWar();
-  }
-
-  selected = [];
-  render();
-}
-
-// ---------- DRAW ----------
+// PLAYER
 function drawDeck(){
-  if(phase !== "draw"){
-    log("Finish your turn first!");
-    return;
-  }
-
+  if(phase !== "draw") return;
   playerHand.push(deck.pop());
-  phase = "action";
-
-  log("Drew from deck → now play or discard");
+  phase = "discard";
   render();
 }
 
 function drawDiscard(){
-  if(phase !== "draw"){
-    log("Finish your turn first!");
-    return;
-  }
-
-  if(discardPile.length === 0){
-    log("Nothing to take.");
-    return;
-  }
-
+  if(phase !== "draw") return;
   playerHand.push(discardPile.shift());
-  phase = "action";
-
-  log("Took card from discard pile");
+  phase = "discard";
   render();
 }
 
-// ---------- DISCARD ----------
-function openDiscardModal(index){
-  pendingDiscardIndex = index;
-  document.getElementById("discardText").innerText =
-    "Discard " + playerHand[index] + "?";
-  document.getElementById("discardModal").style.display = "flex";
-}
+function discardCard(card){
+  if(phase !== "discard") return;
 
-function confirmDiscard(){
-  let index = pendingDiscardIndex;
-  let card = playerHand.splice(index,1)[0];
-
+  playerHand.splice(playerHand.indexOf(card),1);
   discardPile.unshift(card);
 
-  playerTurn = false;
   phase = "draw";
 
-  log("You discarded " + card);
-
-  document.getElementById("discardModal").style.display = "none";
-
-  setTimeout(computerTurn, 800);
+  startComputerTurn();
 }
 
-function cancelDiscard(){
-  document.getElementById("discardModal").style.display = "none";
+// CINEMATIC COMPUTER TURN
+function startComputerTurn(){
+
+  const overlay = document.getElementById("compOverlay");
+  const text = document.getElementById("compText");
+  const cardEl = document.getElementById("compCard");
+
+  overlay.style.display = "flex";
+  text.innerText = "🤖 Computer Thinking...";
+  cardEl.innerText = "";
+
+  setTimeout(()=>{
+    let drawn = deck.pop();
+    computerHand.push(drawn);
+
+    text.innerText = "🤖 Computer draws";
+    cardEl.innerText = drawn;
+
+    setTimeout(()=>{
+      let discard = computerHand.shift();
+      discardPile.unshift(discard);
+
+      text.innerText = "🤖 Computer plays";
+      cardEl.innerText = discard;
+
+      setTimeout(()=>{
+        overlay.style.display = "none";
+        render();
+      },1000);
+
+    },1000);
+
+  },1200);
 }
 
-// ---------- COMPUTER ----------
-function computerTurn(){
-
-  const status = document.getElementById("computerStatus");
-
-  status.innerText = "🤖 Computer is thinking...";
-
-  setTimeout(() => {
-
-    let drawnCard;
-
-    if(deck.length > 0){
-      drawnCard = deck.pop();
-      computerHand.push(drawnCard);
-    }
-
-    status.innerText = "🤖 Computer drew a card";
-
-    setTimeout(() => {
-
-      let discardCard = computerHand.shift();
-      discardPile.unshift(discardCard);
-
-      status.innerText = "🤖 Computer discarded " + discardCard;
-
-      log("Your turn");
-
-      playerTurn = true;
-      phase = "draw";
-
-      render();
-
-    }, 800);
-
-  }, 800);
-}
-
-// ---------- WAR ----------
-function startWar(){
-  document.getElementById("game").style.display = "none";
-  document.getElementById("warZone").style.display = "block";
-  warPile = [];
-}
-
-function playWar(){
-  if(playerHand.length === 0 || computerHand.length === 0){
-    endWar("tie");
-    return;
-  }
-
-  let p = playerHand.shift();
-  let c = computerHand.shift();
-
-  warPile.push(p,c);
-
-  document.getElementById("warCards").innerText =
-    "Player: " + p + " vs Computer: " + c;
-
-  let pVal = cards.indexOf(p.slice(1));
-  let cVal = cards.indexOf(c.slice(1));
-
-  if(pVal > cVal){
-    endWar("player");
-  } else if(cVal > pVal){
-    endWar("computer");
-  }
-}
-
-function endWar(winner){
-  if(winner === "player"){
-    playerHand.push(...warPile);
-    log("You win the war!");
-  } else if(winner === "computer"){
-    computerHand.push(...warPile);
-    log("Computer wins the war!");
-  } else {
-    log("War tie!");
-  }
-
-  document.getElementById("game").style.display = "block";
-  document.getElementById("warZone").style.display = "none";
-
-  phase = "draw";
-  render();
-}
-
-// ---------- LOG ----------
-function log(text){
-  document.getElementById("log").innerText = text;
-}
-
-// ---------- START ----------
+// START
 render();
 
 </script>
