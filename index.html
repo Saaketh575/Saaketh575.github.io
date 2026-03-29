@@ -1,139 +1,150 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Developer Portfolio</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Saaketh | Developer Portfolio</title>
 
-  <style>
-    html { scroll-behavior: smooth; }
+<style>
+:root{
+  --bg:#020617;
+  --card:#1e293b;
+  --text:#ffffff;
+  --accent:#38bdf8;
+}
 
-    body {
-      margin: 0;
-      font-family: 'Inter', sans-serif;
-      background: #020617;
-      color: white;
-    }
+body{
+  margin:0;
+  font-family: 'Inter', sans-serif;
+  background:var(--bg);
+  color:var(--text);
+}
 
-    nav {
-      position: fixed;
-      width: 100%;
-      background: rgba(2,6,23,0.8);
-      backdrop-filter: blur(10px);
-      display: flex;
-      justify-content: center;
-      gap: 30px;
-      padding: 15px;
-      z-index: 1000;
-    }
+/* NAVBAR */
+nav{
+  position:fixed;
+  width:100%;
+  display:flex;
+  justify-content:center;
+  gap:30px;
+  padding:15px;
+  backdrop-filter:blur(10px);
+  background:rgba(0,0,0,0.3);
+  z-index:1000;
+}
 
-    nav a {
-      color: #94a3b8;
-      text-decoration: none;
-    }
+nav a{
+  color:#94a3b8;
+  text-decoration:none;
+}
+nav a:hover{color:white;}
 
-    nav a:hover { color: white; }
+/* HEADER */
+header{
+  text-align:center;
+  padding:150px 20px;
+}
 
-    header {
-      text-align: center;
-      padding: 140px 20px 80px;
-    }
+h1{
+  font-size:55px;
+  margin:0;
+}
 
-    h1 {
-      font-size: 50px;
-    }
+.typing{
+  color:var(--accent);
+}
 
-    .container {
-      max-width: 1000px;
-      margin: auto;
-      padding: 20px;
-    }
+/* CONTAINER */
+.container{
+  max-width:1000px;
+  margin:auto;
+  padding:20px;
+}
 
-    .project {
-      background: #1e293b;
-      padding: 20px;
-      margin: 20px 0;
-      border-radius: 16px;
-      cursor: pointer;
-      transition: 0.3s;
-    }
+/* PROJECT CARD */
+.project{
+  background:var(--card);
+  padding:20px;
+  margin:20px 0;
+  border-radius:18px;
+  cursor:pointer;
+  transition:0.3s;
+}
+.project:hover{
+  transform:translateY(-8px);
+  box-shadow:0 0 25px rgba(56,189,248,0.3);
+}
 
-    .project:hover {
-      transform: translateY(-5px);
-    }
+/* TAGS */
+.tags span{
+  background:#334155;
+  padding:6px 10px;
+  border-radius:8px;
+  margin-right:5px;
+  font-size:12px;
+}
 
-    .tags span {
-      background: #334155;
-      padding: 5px 10px;
-      margin-right: 5px;
-      border-radius: 8px;
-      font-size: 12px;
-    }
+/* MODAL */
+.modal{
+  position:fixed;
+  width:100%;
+  height:100%;
+  background:rgba(0,0,0,0.7);
+  display:none;
+  justify-content:center;
+  align-items:center;
+}
 
-    .hidden { display: none; }
+.modal-content{
+  background:var(--card);
+  padding:30px;
+  border-radius:20px;
+  max-width:600px;
+}
 
-    button {
-      padding: 8px 12px;
-      margin: 5px;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-    }
+/* SKILLS */
+.skills span{
+  display:inline-block;
+  background:#1e293b;
+  padding:10px;
+  margin:5px;
+  border-radius:10px;
+}
 
-    .active-btn {
-      background: #38bdf8;
-      color: black;
-    }
+/* STATS */
+.stats{
+  display:flex;
+  justify-content:space-around;
+  margin-top:40px;
+}
 
-    .stats {
-      display: flex;
-      justify-content: space-around;
-      text-align: center;
-      margin: 40px 0;
-    }
+/* BUTTON */
+.toggle{
+  position:fixed;
+  top:20px;
+  right:20px;
+  cursor:pointer;
+}
 
-    .modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.7);
-      display: none;
-      justify-content: center;
-      align-items: center;
-    }
+/* LIGHT MODE */
+.light{
+  --bg:#ffffff;
+  --card:#f1f5f9;
+  --text:#000000;
+}
 
-    .modal-content {
-      background: #1e293b;
-      padding: 30px;
-      border-radius: 16px;
-      max-width: 500px;
-    }
+/* SCROLL ANIMATION */
+.reveal{
+  opacity:0;
+  transform:translateY(40px);
+  transition:0.8s;
+}
+.reveal.active{
+  opacity:1;
+  transform:translateY(0);
+}
 
-    .toggle {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-    }
-
-    .light {
-      background: white;
-      color: black;
-    }
-
-    .light .project { background: #e2e8f0; }
-
-    .reveal {
-      opacity: 0;
-      transform: translateY(30px);
-      transition: 0.6s;
-    }
-
-    .reveal.active {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-  </style>
+</style>
 </head>
 
 <body>
@@ -147,35 +158,41 @@
 <button class="toggle" onclick="toggleMode()">🌗</button>
 
 <header>
-  <h1>Hi, I'm Saaketh</h1>
-  <p>Python Game Developer • Problem Solver</p>
+  <h1 id="type"></h1>
+  <p class="typing">Python Developer • Game Engineer • Problem Solver</p>
 </header>
 
 <div class="container">
 
 <h2 id="projects">Projects</h2>
 
-<button onclick="filter('all')" class="active-btn">All</button>
-<button onclick="filter('game')">Games</button>
-
-<div class="project reveal game" onclick="openModal('word')">
-  <h3>Word Game</h3>
-  <div class="tags"><span>Python</span><span>Logic</span></div>
+<div class="project reveal" onclick="openModal('word')">
+  <h3>🎮 Word Guessing Game</h3>
+  <div class="tags">
+    <span>Python</span><span>Algorithms</span>
+  </div>
 </div>
 
-<div class="project reveal game" onclick="openModal('war')">
-  <h3>War Card Game</h3>
-  <div class="tags"><span>Python</span><span>AI</span></div>
+<div class="project reveal" onclick="openModal('war')">
+  <h3>🎮 War Card Game</h3>
+  <div class="tags">
+    <span>Python</span><span>AI</span>
+  </div>
 </div>
 
 <h2 id="skills">Skills</h2>
-<p class="reveal">Python • Algorithms • Game Design • Problem Solving</p>
+<div class="skills reveal">
+  <span>Python</span>
+  <span>Algorithms</span>
+  <span>Game Design</span>
+  <span>Problem Solving</span>
+</div>
 
 <h2 id="stats">Stats</h2>
 <div class="stats reveal">
-  <div><h2>5+</h2><p>Projects</p></div>
-  <div><h2>1000+</h2><p>Lines of Code</p></div>
-  <div><h2>100%</h2><p>Passion</p></div>
+  <div><h2>2+</h2><p>Projects</p></div>
+  <div><h2>1500+</h2><p>Lines of Code</p></div>
+  <div><h2>∞</h2><p>Curiosity</p></div>
 </div>
 
 </div>
@@ -186,56 +203,62 @@
 
 <script>
 
-/* Dark mode persistence */
-if(localStorage.getItem("mode") === "light"){
-  document.body.classList.add("light");
+/* TYPING EFFECT */
+const text="Hi, I'm Saaketh";
+let i=0;
+function type(){
+  if(i<text.length){
+    document.getElementById("type").innerHTML+=text.charAt(i);
+    i++;
+    setTimeout(type,50);
+  }
 }
+type();
 
+/* DARK MODE */
 function toggleMode(){
   document.body.classList.toggle("light");
-  localStorage.setItem("mode",
-    document.body.classList.contains("light") ? "light" : "dark"
-  );
 }
 
-/* Filtering */
-function filter(type){
-  document.querySelectorAll(".project").forEach(p=>{
-    p.style.display = (type==="all" || p.classList.contains(type)) ? "block" : "none";
-  });
-}
-
-/* Modal */
+/* MODALS */
 function openModal(name){
-  const modal = document.getElementById("modal");
-  const content = document.getElementById("modal-content");
+  const modal=document.getElementById("modal");
+  const content=document.getElementById("modal-content");
 
   if(name==="word"){
-    content.innerHTML = `
-    <h2>🎮 Word Guessing Game</h2>
-    <p><b>Concept:</b> A logic-based word guessing game using a dataset.</p>
-    <p><b>Features:</b> Hint system, filtering logic, file-based words.</p>
-    <p><b>What I learned:</b> File handling and algorithms.</p>
-    <a href="https://github.com/Saaketh575/word-game" target="_blank">View Code</a>
-  `;
-  } else {
-    content.innerHTML = "<h2>War Game</h2><p>AI opponent using combinations and probability logic.</p>";
+    content.innerHTML=`
+      <h2>🎮 Word Guessing Game</h2>
+      <p><b>Concept:</b> A logic-based game using a dataset and filtering system.</p>
+      <p><b>Features:</b> Hint system, file handling, word filtering.</p>
+      <p><b>What I learned:</b> Algorithms and data handling.</p>
+      <a href="https://github.com/Saaketh575/word-game" target="_blank">View Code</a>
+    `;
   }
 
-  modal.style.display = "flex";
+  else if(name==="war"){
+    content.innerHTML=`
+      <h2>🎮 War Card Game</h2>
+      <p><b>Concept:</b> Simulates the classic War card game.</p>
+      <p><b>Features:</b> AI opponent using probability logic.</p>
+      <p><b>What I learned:</b> Game simulation and combinatorics.</p>
+      <a href="https://github.com/Saaketh575/war-card-game" target="_blank">View Code</a>
+    `;
+  }
+
+  modal.style.display="flex";
 }
 
-window.onclick = function(e){
+/* CLOSE MODAL */
+window.onclick=function(e){
   if(e.target.id==="modal"){
     document.getElementById("modal").style.display="none";
   }
 }
 
-/* Scroll reveal */
-window.addEventListener("scroll", ()=>{
+/* SCROLL ANIMATION */
+window.addEventListener("scroll",()=>{
   document.querySelectorAll(".reveal").forEach(el=>{
-    const top = el.getBoundingClientRect().top;
-    if(top < window.innerHeight - 50){
+    if(el.getBoundingClientRect().top < window.innerHeight-50){
       el.classList.add("active");
     }
   });
