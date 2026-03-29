@@ -10,14 +10,6 @@
       text-align: center;
     }
 
-    h1 {
-      margin-top: 20px;
-    }
-
-    .hand {
-      margin: 20px;
-    }
-
     .card {
       display: inline-block;
       padding: 12px;
@@ -27,11 +19,6 @@
       border-radius: 10px;
       cursor: pointer;
       font-weight: bold;
-      transition: 0.2s;
-    }
-
-    .card:hover {
-      transform: scale(1.1);
     }
 
     .selected {
@@ -43,27 +30,25 @@
       margin: 10px;
       border-radius: 10px;
       border: none;
-      cursor: pointer;
       background: #38bdf8;
+      cursor: pointer;
       font-weight: bold;
-    }
-
-    #log {
-      margin-top: 20px;
-      min-height: 30px;
     }
   </style>
 </head>
 
 <body>
 
-<h1>🎮 Rummy War (Web Version)</h1>
+<h1>🎮 Rummy War</h1>
 
 <h3>Your Hand</h3>
-<div id="playerHand" class="hand"></div>
+<div id="playerHand"></div>
 
 <h3>Discard Pile</h3>
 <div id="discard"></div>
+
+<h3>Your Melds</h3>
+<div id="melds"></div>
 
 <div>
   <button onclick="drawDeck()">Draw Deck</button>
@@ -75,6 +60,7 @@
 
 <script>
 
+// ---------- GAME DATA ----------
 const cards = ["2","3","4","5","6","7","8","9","X","J","Q","K","A"];
 const suits = ["♣","♦","♥","♠"];
 
@@ -83,30 +69,34 @@ let playerHand = [];
 let computerHand = [];
 let discardPile = [];
 
+let playerMelds = [];
+
 let selected = [];
 
-// CREATE DECK
+// ---------- TURN STATE ----------
+let hasDrawn = false;
+let playerTurn = true;
+
+// ---------- INIT ----------
 for (let s of suits){
   for (let c of cards){
     deck.push(s+c);
   }
 }
 
-// SHUFFLE
 deck.sort(()=>Math.random()-0.5);
 
-// DEAL
 playerHand = deck.splice(0,7);
 computerHand = deck.splice(0,7);
 discardPile.push(deck.pop());
 
-// RENDER UI
+// ---------- RENDER ----------
 function render(){
-  const handDiv = document.getElementById("playerHand");
+  let handDiv = document.getElementById("playerHand");
   handDiv.innerHTML = "";
 
   playerHand.forEach((card, index)=>{
-    const el = document.createElement("div");
+    let el = document.createElement("div");
     el.className = "card";
     el.innerText = card;
 
@@ -114,16 +104,27 @@ function render(){
       el.classList.add("selected");
     }
 
-    el.onclick = ()=>selectCard(index);
+    el.onclick = ()=>{
+      if(hasDrawn){
+        discard(index);
+      } else {
+        selectCard(index);
+      }
+    };
 
     handDiv.appendChild(el);
   });
 
   document.getElementById("discard").innerText = discardPile[0] || "Empty";
+
+  document.getElementById("melds").innerHTML =
+    playerMelds.map(m => "[" + m.join(", ") + "]").join("<br>");
 }
 
-// SELECT CARDS
+// ---------- SELECT ----------
 function selectCard(index){
+  if(!playerTurn) return;
+
   if(selected.includes(index)){
     selected = selected.filter(i=>i!==index);
   } else {
@@ -134,27 +135,31 @@ function selectCard(index){
   render();
 }
 
-// MELD CHECK (YOUR LOGIC)
-function meldCheck(cardsList){
-  let ranks = cardsList.map(c=>c.slice(1));
-  let suitsList = cardsList.map(c=>c[0]);
+// ---------- MELD ----------
+function meldCheck(list){
+  let ranks = list.map(c=>c.slice(1));
+  let suitsList = list.map(c=>c[0]);
 
-  // SET
+  // set
   if(ranks[0] === ranks[1] && ranks[1] === ranks[2]){
     return true;
   }
 
-  // RUN
+  // run
   if(suitsList[0] === suitsList[1] && suitsList[1] === suitsList[2]){
-    let idxs = cardsList.map(c=>cards.indexOf(c.slice(1))).sort((a,b)=>a-b);
+    let idxs = list.map(c=>cards.indexOf(c.slice(1))).sort((a,b)=>a-b);
     return idxs[0]+1===idxs[1] && idxs[1]+1===idxs[2];
   }
 
   return false;
 }
 
-// CHECK MELD BUTTON
 function checkMeld(){
+  if(!playerTurn){
+    log("Not your turn!");
+    return;
+  }
+
   if(selected.length !== 3){
     log("Select exactly 3 cards!");
     return;
@@ -164,6 +169,8 @@ function checkMeld(){
 
   if(meldCheck(chosen)){
     log("Valid meld!");
+
+    playerMelds.push(chosen);
 
     selected.sort((a,b)=>b-a).forEach(i=>{
       playerHand.splice(i,1);
@@ -177,58 +184,88 @@ function checkMeld(){
   render();
 }
 
-// DRAW FROM DECK
+// ---------- DRAW ----------
 function drawDeck(){
+  if(!playerTurn) return;
+
+  if(hasDrawn){
+    log("Already drew! Now discard.");
+    return;
+  }
+
   if(deck.length === 0){
     log("Deck empty!");
     return;
   }
 
   playerHand.push(deck.pop());
-  log("Drew from deck");
+  hasDrawn = true;
+
+  log("Drew from deck. Now discard.");
   render();
 }
 
-// DRAW FROM DISCARD
 function drawDiscard(){
+  if(!playerTurn) return;
+
+  if(hasDrawn){
+    log("Already drew! Now discard.");
+    return;
+  }
+
   if(discardPile.length === 0){
     log("Discard empty!");
     return;
   }
 
   playerHand.push(discardPile.shift());
-  log("Drew from discard");
+  hasDrawn = true;
+
+  log("Drew from discard. Now discard.");
   render();
 }
 
-// DISCARD CARD
+// ---------- DISCARD ----------
 function discard(index){
+  if(!hasDrawn){
+    log("You must draw first!");
+    return;
+  }
+
   const card = playerHand.splice(index,1)[0];
   discardPile.unshift(card);
+
+  hasDrawn = false;
+  playerTurn = false;
+
   log("You discarded " + card);
 
-  computerTurn();
-  render();
+  setTimeout(computerTurn, 800);
 }
 
-// COMPUTER TURN (BASIC)
+// ---------- COMPUTER ----------
 function computerTurn(){
+  // draw
   if(deck.length > 0){
     computerHand.push(deck.pop());
   }
 
-  const discardCard = computerHand.shift();
+  // discard simple
+  let discardCard = computerHand.shift();
   discardPile.unshift(discardCard);
 
   log("Computer discarded " + discardCard);
+
+  playerTurn = true;
+  render();
 }
 
-// LOG SYSTEM
+// ---------- LOG ----------
 function log(text){
   document.getElementById("log").innerText = text;
 }
 
-// INIT
+// ---------- START ----------
 render();
 
 </script>
