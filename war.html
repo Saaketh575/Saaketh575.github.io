@@ -23,13 +23,9 @@
       transition: 0.2s;
     }
 
-    .card:hover {
-      transform: scale(1.1);
-    }
+    .card:hover { transform: scale(1.1); }
 
-    .selected {
-      border: 3px solid yellow;
-    }
+    .selected { border: 3px solid yellow; }
 
     button {
       padding: 10px 20px;
@@ -41,16 +37,15 @@
       font-weight: bold;
     }
 
-    #log {
-      margin-top: 20px;
-      min-height: 30px;
+    #log { margin-top: 20px; min-height: 30px; }
+
+    #computerStatus {
+      margin-top: 10px;
+      color: #38bdf8;
+      font-weight: bold;
     }
 
-    /* ELITE DISCARD */
-    .discard-container {
-      margin-top: 20px;
-    }
-
+    /* DISCARD ELITE */
     .discard-box {
       display:inline-block;
       padding:20px;
@@ -104,10 +99,7 @@
     }
 
     /* WAR */
-    #warZone {
-      display: none;
-      margin-top: 30px;
-    }
+    #warZone { display: none; margin-top: 30px; }
   </style>
 </head>
 
@@ -120,17 +112,15 @@
 <h3>Your Hand</h3>
 <div id="playerHand"></div>
 
-<!-- ELITE DISCARD -->
-<div class="discard-container">
-  <h3>🗂 Discard Pile</h3>
-  <p style="color:#94a3b8; font-size:14px;">
-    Pick up the top card from here instead of drawing from the deck.
-  </p>
+<!-- DISCARD -->
+<h3>🗂 Discard Pile</h3>
+<p style="color:#94a3b8; font-size:14px;">
+  Pick up the top card from here instead of drawing from the deck.
+</p>
 
-  <div id="discard" class="discard-box" onclick="drawDiscard()">
-    <div class="stack-preview" id="stackPreview"></div>
-    <div id="discardTop"></div>
-  </div>
+<div id="discard" class="discard-box" onclick="drawDiscard()">
+  <div id="stackPreview" class="stack-preview"></div>
+  <div id="discardTop"></div>
 </div>
 
 <h3>Your Melds</h3>
@@ -142,6 +132,7 @@
 </div>
 
 <p id="log"></p>
+<div id="computerStatus"></div>
 
 </div>
 
@@ -181,7 +172,6 @@ let phase = "draw";
 let pendingDiscardIndex = null;
 
 // WAR
-let inWar = false;
 let warPile = [];
 
 // ---------- INIT ----------
@@ -222,7 +212,7 @@ function render(){
     handDiv.appendChild(el);
   });
 
-  // DISCARD ELITE
+  // DISCARD UI
   let topEl = document.getElementById("discardTop");
   let previewEl = document.getElementById("stackPreview");
 
@@ -359,19 +349,39 @@ function cancelDiscard(){
 
 // ---------- COMPUTER ----------
 function computerTurn(){
-  if(deck.length > 0){
-    computerHand.push(deck.pop());
-  }
 
-  let discardCard = computerHand.shift();
-  discardPile.unshift(discardCard);
+  const status = document.getElementById("computerStatus");
 
-  log("Computer discarded " + discardCard);
+  status.innerText = "🤖 Computer is thinking...";
 
-  playerTurn = true;
-  phase = "draw";
+  setTimeout(() => {
 
-  render();
+    let drawnCard;
+
+    if(deck.length > 0){
+      drawnCard = deck.pop();
+      computerHand.push(drawnCard);
+    }
+
+    status.innerText = "🤖 Computer drew a card";
+
+    setTimeout(() => {
+
+      let discardCard = computerHand.shift();
+      discardPile.unshift(discardCard);
+
+      status.innerText = "🤖 Computer discarded " + discardCard;
+
+      log("Your turn");
+
+      playerTurn = true;
+      phase = "draw";
+
+      render();
+
+    }, 800);
+
+  }, 800);
 }
 
 // ---------- WAR ----------
