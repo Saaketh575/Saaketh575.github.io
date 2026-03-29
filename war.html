@@ -11,8 +11,10 @@ body {
     color: #fff;
     text-align: center;
     overflow-x: hidden;
+    margin:0; padding:0;
 }
-h1 { font-size:2.5em; text-shadow:0 0 10px #ff0,0 0 20px #f0f,0 0 30px #0ff; }
+h1 { font-size:2.5em; text-shadow:0 0 10px #ff0,0 0 20px #f0f,0 0 30px #0ff; margin-top:20px;}
+#messages { margin-top:20px; min-height:100px; font-size:1.1em; text-shadow:0 0 5px #ff0; text-align:left; max-width:900px; margin-left:auto; margin-right:auto;}
 #player-hand, #table-melds, #discard-pile, #ai-area { margin:20px auto; display:flex; justify-content:center; gap:10px; flex-wrap:wrap; min-height:120px;}
 .card {
     width:60px; height:90px;
@@ -23,6 +25,7 @@ h1 { font-size:2.5em; text-shadow:0 0 10px #ff0,0 0 20px #f0f,0 0 30px #0ff; }
     position: relative;
 }
 .card:hover { transform:scale(1.2); box-shadow:0 0 15px #ff0,0 0 25px #f0f; }
+.selected { box-shadow:0 0 20px #0ff !important; transform:scale(1.3);}
 .meld-card { border:2px solid #0ff; box-shadow:0 0 15px #0ff; }
 .discarded { border:2px solid #f00; box-shadow:0 0 15px #f00; }
 button {
@@ -32,11 +35,6 @@ button {
     text-shadow:1px 1px 2px #000; transition: transform 0.2s, box-shadow 0.2s;
 }
 button:hover { transform:scale(1.1); box-shadow:0 0 15px #ff0,0 0 25px #f0f; }
-#messages { margin-top:20px; min-height:80px; font-size:1.1em; text-shadow:0 0 5px #ff0; text-align:left; max-width:900px; margin-left:auto; margin-right:auto;}
-.modal-bg { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); justify-content:center; align-items:center; z-index:999; }
-.modal { background:#222; padding:20px; border:2px solid #ff0; border-radius:10px; min-width:300px; text-align:center; }
-.modal h3 { margin-bottom:15px; }
-.modal button { margin:5px; }
 @keyframes bonusCardRain {
     0% { transform: translateY(-100px) rotate(0deg); opacity:0; }
     50% { opacity:1; }
@@ -45,10 +43,12 @@ button:hover { transform:scale(1.1); box-shadow:0 0 15px #ff0,0 0 25px #f0f; }
 .bonus-card {
     position:absolute; font-size:1.5em; animation: bonusCardRain 2s linear forwards;
 }
+#ai-area { transition: transform 0.8s, background 0.8s; }
+.ai-active { transform: scale(1.2); background:rgba(255,255,0,0.2); border-radius:10px; }
 </style>
 </head>
 <body>
-<h1>Rummy + War GOD MODE ANIMATED</h1>
+<h1>Rummy + War GOD MODE</h1>
 <div id="messages"></div>
 
 <div id="table-melds"><h3>Table Melds:</h3></div>
@@ -63,23 +63,6 @@ button:hover { transform:scale(1.1); box-shadow:0 0 15px #ff0,0 0 25px #f0f; }
     <button onclick="declareRummy()">Declare Rummy</button>
 </div>
 
-<div id="discard-modal" class="modal-bg">
-    <div class="modal">
-        <h3>Discard this card?</h3>
-        <div id="modal-card" style="font-size:2em;margin:10px;"></div>
-        <button id="confirm-discard">Yes</button>
-        <button id="cancel-discard">No</button>
-    </div>
-</div>
-
-<div id="meld-modal" class="modal-bg">
-    <div class="modal">
-        <h3>Lay a Meld</h3>
-        <p>Click 3 cards from your hand to form a meld.</p>
-        <button onclick="closeMeldModal()">Cancel</button>
-    </div>
-</div>
-
 <script>
 // ------------------- GLOBAL -------------------
 const cardsOrder = ["2","3","4","5","6","7","8","9","X","J","Q","K","A","🤡"];
@@ -87,7 +70,7 @@ const suits = ["♣","♦","♥","♠"];
 let deck = [], playerHand = [], computerHand = [];
 let discardPile = [], tableMelds = [], playerMelds = [], computerMelds = [];
 let playerTurn = true, rummy = true;
-let pendingDiscardIndex = null, selectedMeldCards = [];
+let selectedMeldCards = [];
 
 for (const s of suits) { for (const c of cardsOrder) deck.push(s+c); }
 deck.sort(()=>Math.random()-0.5);
@@ -95,25 +78,33 @@ playerHand = deck.splice(0,7); computerHand = deck.splice(0,7);
 discardPile = [deck.shift()];
 
 const messagesDiv = document.getElementById("messages");
-const discardModal = document.getElementById("discard-modal");
-const meldModal = document.getElementById("meld-modal");
-const modalCard = document.getElementById("modal-card");
+const aiArea = document.getElementById("ai-area");
 
+// ------------------- LOG -------------------
 function logMessage(msg){ messagesDiv.innerHTML=`<span>${msg}</span><br>`+messagesDiv.innerHTML; }
 
+// ------------------- RENDER -------------------
 function renderHands(){
     const playerDiv = document.getElementById("player-hand"); playerDiv.innerHTML="<h3>Your Hand:</h3>";
     playerHand.forEach((card,index)=>{
         const cardDiv=document.createElement("div"); cardDiv.className="card"; cardDiv.textContent=card;
-        cardDiv.onclick=()=>playerTurn && openDiscardModal(index);
-        if(selectedMeldCards.includes(index)) cardDiv.style.boxShadow="0 0 15px #0ff";
+        if(selectedMeldCards.includes(index)) cardDiv.classList.add("selected");
+        cardDiv.onclick=()=>{
+            if(!playerTurn) return;
+            if(selectedMeldCards.includes(index)){
+                selectedMeldCards = selectedMeldCards.filter(i=>i!==index);
+            }else{
+                if(selectedMeldCards.length<3) selectedMeldCards.push(index);
+            }
+            renderHands();
+        };
         playerDiv.appendChild(cardDiv);
     });
     const tableDiv=document.getElementById("table-melds"); tableDiv.innerHTML="<h3>Table Melds:</h3>";
     tableMelds.forEach(c=>{const d=document.createElement("div"); d.className="card meld-card"; d.textContent=c; tableDiv.appendChild(d);});
     const discardDiv=document.getElementById("discard-pile"); discardDiv.innerHTML="<h3>Discard Pile:</h3>";
     if(discardPile[0]){const d=document.createElement("div"); d.className="card discarded"; d.textContent=discardPile[0]; discardDiv.appendChild(d);}
-    const aiDiv=document.getElementById("ai-area"); aiDiv.innerHTML="<h3>Computer Area:</h3>"; aiDiv.textContent=`Cards: ${computerHand.length}`;
+    aiArea.textContent=`Computer Cards: ${computerHand.length}`;
 }
 
 // ------------------- MELD CHECK -------------------
@@ -141,13 +132,11 @@ function cardScore(card, hand){
     }
     return score;
 }
-
 function chooseDiscard(hand){
     let scored = hand.map(c=>[cardScore(c,hand),c]);
     scored.sort((a,b)=>a[0]-b[0]);
     return scored[0][1];
 }
-
 function isUseful(card, hand){
     for(let i=0;i<hand.length;i++){
         for(let j=i+1;j<hand.length;j++){
@@ -156,7 +145,6 @@ function isUseful(card, hand){
     }
     return false;
 }
-
 function refillTo(hand,amount){ while(hand.length<amount && deck.length>0) hand.push(deck.shift()); }
 
 // ------------------- WAR -------------------
@@ -166,7 +154,7 @@ function runWarGame(pHand,cHand){
     function refill(hand,amt){ while(hand.length<amt && deck.length>0) hand.push(deck.shift()); }
     while(true){
         if(pHand.length<2 || cHand.length<2){
-            logMessage("Not enough cards to continue War. It's a tie!");
+            logMessage("Not enough cards to continue War. Tie!");
             refill(pHand,7); refill(cHand,7); return "tie";
         }
         let cardp=pHand.shift(), cardc=cHand.shift();
@@ -180,7 +168,7 @@ function runWarGame(pHand,cHand){
         } else {
             logMessage("War!");
             if(pHand.length<4 || cHand.length<4){
-                logMessage("Not enough cards to continue War. It's a tie!");
+                logMessage("Not enough cards to continue War. Tie!");
                 let half=Math.floor(tablecards.length/2);
                 pHand.push(...tablecards.slice(0,half));
                 cHand.push(...tablecards.slice(half));
@@ -210,49 +198,49 @@ function bonusCardRain(hand){
 }
 
 // ------------------- PLAYER ACTIONS -------------------
-function openDiscardModal(index){
-    pendingDiscardIndex=index;
-    modalCard.textContent=playerHand[index];
-    discardModal.style.display="flex";
+function layMeld(){
+    if(!playerTurn) return;
+    if(selectedMeldCards.length!==3){ logMessage("Select exactly 3 cards!"); return; }
+    const meldAttempt = selectedMeldCards.map(i=>playerHand[i]);
+    if(meldCheck(meldAttempt)){
+        logMessage("Valid meld laid down!");
+        // remove from hand and add to table
+        selectedMeldCards.sort((a,b)=>b-a).forEach(i=>tableMelds.push(playerHand.splice(i,1)[0]));
+        playerMelds.push(meldAttempt);
+        selectedMeldCards=[];
+        playerTurn=false; renderHands(); setTimeout(aiTurn,800);
+    }else{
+        logMessage("Invalid meld! WAR triggered!");
+        runWarGame(playerHand,computerHand);
+        selectedMeldCards=[]; renderHands(); playerTurn=false; setTimeout(aiTurn,800);
+    }
 }
-document.getElementById("confirm-discard").onclick=function(){
-    let card=playerHand.splice(pendingDiscardIndex,1)[0];
-    discardPile.unshift(card);
-    logMessage(`Player discarded: ${card}`);
-    discardModal.style.display="none"; pendingDiscardIndex=null;
-    playerTurn=false; renderHands(); setTimeout(aiTurn,800);
-};
-document.getElementById("cancel-discard").onclick=function(){
-    discardModal.style.display="none"; pendingDiscardIndex=null;
-};
 
 function drawDeck(){ if(!playerTurn) return; if(deck.length===0){ logMessage("Deck empty!"); return; } let card=deck.shift(); playerHand.push(card); logMessage(`Player drew a card.`); renderHands(); }
 function drawDiscard(){ if(!playerTurn) return; if(discardPile.length===0){ logMessage("Discard pile empty!"); return; } let card=discardPile.shift(); playerHand.push(card); logMessage(`Player drew ${card} from discard pile.`); renderHands(); }
-function layMeld(){ if(!playerTurn) return; selectedMeldCards=[]; meldModal.style.display="flex"; }
-function closeMeldModal(){ meldModal.style.display="none"; selectedMeldCards=[]; renderHands(); }
 function declareRummy(){ if(playerMelds.length>=2 && playerMelds.some(m=>meldCheck(m))){ logMessage("PLAYER DECLARES RUMMY! YOU WIN! 🏆"); playerTurn=false; } else{ logMessage("Cannot declare Rummy! WAR triggered."); runWarGame(playerHand,computerHand); renderHands(); playerTurn=false; setTimeout(aiTurn,800); } }
 
 // ------------------- AI -------------------
 function aiTurn(){
-    if(playerTurn) return;
+    aiArea.classList.add("ai-active");
     let picked=null;
     if(discardPile.length>0 && isUseful(discardPile[0],computerHand)) picked=discardPile.shift();
     else if(deck.length>0) picked=deck.shift();
     else picked=discardPile.shift();
     computerHand.push(picked);
-    // animation: hidden draw
     logMessage("Computer drew a card...");
     setTimeout(()=>{
-        let discard=chooseDiscard(computerHand); computerHand.splice(computerHand.indexOf(discard),1); discardPile.unshift(discard);
+        let discard=chooseDiscard(computerHand); computerHand.splice(computerHand.indexOf(discard),1);
+        discardPile.unshift(discard);
         logMessage(`Computer discarded: ${discard}`);
-        renderHands();
-        playerTurn=true;
-    },600);
+        aiArea.classList.remove("ai-active");
+        playerTurn=true; renderHands();
+    },800);
 }
 
 // ------------------- INITIAL RENDER -------------------
 renderHands();
-logMessage("Game started! Click cards to discard or use buttons.");
+logMessage("Game started! Click cards to select melds or use buttons.");
 </script>
 </body>
 </html>
