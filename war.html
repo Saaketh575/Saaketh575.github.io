@@ -18,7 +18,13 @@
       background: white;
       color: black;
       border-radius: 10px;
+      cursor: pointer;
       font-weight: bold;
+      transition: 0.2s;
+    }
+
+    .card:hover {
+      transform: scale(1.1);
     }
 
     .selected {
@@ -32,8 +38,72 @@
       border: none;
       background: #38bdf8;
       cursor: pointer;
+      font-weight: bold;
     }
 
+    #log {
+      margin-top: 20px;
+      min-height: 30px;
+    }
+
+    /* ELITE DISCARD */
+    .discard-container {
+      margin-top: 20px;
+    }
+
+    .discard-box {
+      display:inline-block;
+      padding:20px;
+      background:#1e293b;
+      border-radius:12px;
+      cursor:pointer;
+      min-width:100px;
+      position: relative;
+      transition: 0.3s;
+    }
+
+    .discard-box:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 20px #38bdf8;
+      background:#334155;
+    }
+
+    .stack-preview {
+      position: absolute;
+      top: -10px;
+      left: 10px;
+      display: flex;
+      gap: 5px;
+    }
+
+    .mini-card {
+      background: #94a3b8;
+      color: black;
+      padding: 3px 6px;
+      border-radius: 6px;
+      font-size: 10px;
+    }
+
+    /* MODAL */
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.7);
+      display: none;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-content {
+      background: #1e293b;
+      padding: 30px;
+      border-radius: 16px;
+    }
+
+    /* WAR */
     #warZone {
       display: none;
       margin-top: 30px;
@@ -50,20 +120,45 @@
 <h3>Your Hand</h3>
 <div id="playerHand"></div>
 
-<h3>Discard</h3>
-<div id="discard"></div>
+<!-- ELITE DISCARD -->
+<div class="discard-container">
+  <h3>🗂 Discard Pile</h3>
+  <p style="color:#94a3b8; font-size:14px;">
+    Pick up the top card from here instead of drawing from the deck.
+  </p>
 
-<button onclick="drawDeck()">Draw Deck</button>
-<button onclick="checkMeld()">Check Meld</button>
+  <div id="discard" class="discard-box" onclick="drawDiscard()">
+    <div class="stack-preview" id="stackPreview"></div>
+    <div id="discardTop"></div>
+  </div>
+</div>
+
+<h3>Your Melds</h3>
+<div id="melds"></div>
+
+<div>
+  <button onclick="drawDeck()">Draw Deck</button>
+  <button onclick="checkMeld()">Check Meld</button>
+</div>
 
 <p id="log"></p>
 
 </div>
 
+<!-- WAR -->
 <div id="warZone">
   <h2>⚔️ WAR!</h2>
   <div id="warCards"></div>
   <button onclick="playWar()">Play War Round</button>
+</div>
+
+<!-- MODAL -->
+<div class="modal" id="discardModal">
+  <div class="modal-content">
+    <h3 id="discardText"></h3>
+    <button onclick="confirmDiscard()">Yes</button>
+    <button onclick="cancelDiscard()">No</button>
+  </div>
 </div>
 
 <script>
@@ -77,10 +172,15 @@ let playerHand = [];
 let computerHand = [];
 let discardPile = [];
 
+let playerMelds = [];
 let selected = [];
+
+let playerTurn = true;
 let phase = "draw";
 
-// WAR STATE
+let pendingDiscardIndex = null;
+
+// WAR
 let inWar = false;
 let warPile = [];
 
@@ -112,7 +212,9 @@ function render(){
     }
 
     el.onclick = ()=>{
-      if(phase === "draw"){
+      if(phase !== "draw"){
+        openDiscardModal(index);
+      } else {
         selectCard(index);
       }
     };
@@ -120,7 +222,22 @@ function render(){
     handDiv.appendChild(el);
   });
 
-  document.getElementById("discard").innerText = discardPile[0] || "Empty";
+  // DISCARD ELITE
+  let topEl = document.getElementById("discardTop");
+  let previewEl = document.getElementById("stackPreview");
+
+  topEl.innerText = discardPile[0] || "Empty";
+
+  previewEl.innerHTML = "";
+  discardPile.slice(1,4).forEach(card=>{
+    let mini = document.createElement("div");
+    mini.className = "mini-card";
+    mini.innerText = card;
+    previewEl.appendChild(mini);
+  });
+
+  document.getElementById("melds").innerHTML =
+    playerMelds.map(m => "[" + m.join(", ") + "]").join("<br>");
 }
 
 // ---------- SELECT ----------
@@ -151,8 +268,13 @@ function meldCheck(list){
 }
 
 function checkMeld(){
+  if(phase === "draw"){
+    log("Draw first!");
+    return;
+  }
+
   if(selected.length !== 3){
-    log("Select 3 cards!");
+    log("Select exactly 3 cards!");
     return;
   }
 
@@ -160,34 +282,102 @@ function checkMeld(){
 
   if(meldCheck(chosen)){
     log("Valid meld!");
+    playerMelds.push(chosen);
+
+    selected.sort((a,b)=>b-a).forEach(i=>{
+      playerHand.splice(i,1);
+    });
+
   } else {
     log("Invalid meld → WAR!");
     startWar();
   }
 
   selected = [];
+  render();
 }
 
 // ---------- DRAW ----------
 function drawDeck(){
   if(phase !== "draw"){
-    log("Finish turn first!");
+    log("Finish your turn first!");
     return;
   }
 
   playerHand.push(deck.pop());
   phase = "action";
 
+  log("Drew from deck → now play or discard");
+  render();
+}
+
+function drawDiscard(){
+  if(phase !== "draw"){
+    log("Finish your turn first!");
+    return;
+  }
+
+  if(discardPile.length === 0){
+    log("Nothing to take.");
+    return;
+  }
+
+  playerHand.push(discardPile.shift());
+  phase = "action";
+
+  log("Took card from discard pile");
+  render();
+}
+
+// ---------- DISCARD ----------
+function openDiscardModal(index){
+  pendingDiscardIndex = index;
+  document.getElementById("discardText").innerText =
+    "Discard " + playerHand[index] + "?";
+  document.getElementById("discardModal").style.display = "flex";
+}
+
+function confirmDiscard(){
+  let index = pendingDiscardIndex;
+  let card = playerHand.splice(index,1)[0];
+
+  discardPile.unshift(card);
+
+  playerTurn = false;
+  phase = "draw";
+
+  log("You discarded " + card);
+
+  document.getElementById("discardModal").style.display = "none";
+
+  setTimeout(computerTurn, 800);
+}
+
+function cancelDiscard(){
+  document.getElementById("discardModal").style.display = "none";
+}
+
+// ---------- COMPUTER ----------
+function computerTurn(){
+  if(deck.length > 0){
+    computerHand.push(deck.pop());
+  }
+
+  let discardCard = computerHand.shift();
+  discardPile.unshift(discardCard);
+
+  log("Computer discarded " + discardCard);
+
+  playerTurn = true;
+  phase = "draw";
+
   render();
 }
 
 // ---------- WAR ----------
 function startWar(){
-  inWar = true;
-
   document.getElementById("game").style.display = "none";
   document.getElementById("warZone").style.display = "block";
-
   warPile = [];
 }
 
@@ -200,7 +390,7 @@ function playWar(){
   let p = playerHand.shift();
   let c = computerHand.shift();
 
-  warPile.push(p, c);
+  warPile.push(p,c);
 
   document.getElementById("warCards").innerText =
     "Player: " + p + " vs Computer: " + c;
@@ -212,8 +402,6 @@ function playWar(){
     endWar("player");
   } else if(cVal > pVal){
     endWar("computer");
-  } else {
-    log("War continues!");
   }
 }
 
@@ -231,7 +419,6 @@ function endWar(winner){
   document.getElementById("game").style.display = "block";
   document.getElementById("warZone").style.display = "none";
 
-  inWar = false;
   phase = "draw";
   render();
 }
