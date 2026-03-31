@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Rummy + War</title>
+<title>Rummy + War GOD MODE FINAL</title>
 
 <style>
 body {
@@ -18,6 +18,7 @@ body {
     padding:10px;
     background:#111;
     color:#0ff;
+    box-shadow:0 0 10px cyan;
 }
 
 /* GAME */
@@ -35,11 +36,15 @@ body {
 .selected { box-shadow:0 0 20px cyan; }
 
 /* DISCARD */
-#discard-area { margin-top:30px; }
-#discard-label { color:red; font-size:20px; }
+#discard-label {
+    color:red;
+    font-size:20px;
+    text-shadow:0 0 10px red;
+}
 
 .discard-card {
-    width:90px; height:120px;
+    width:90px;
+    height:120px;
     border:2px solid red;
     margin:auto;
     display:flex;
@@ -48,15 +53,36 @@ body {
     box-shadow:0 0 25px red;
 }
 
+/* MELDS */
+#meld-label {
+    color:#0ff;
+    font-size:20px;
+    margin-top:20px;
+}
+
+.meld {
+    display:inline-block;
+    border:2px solid cyan;
+    padding:10px;
+    margin:5px;
+    border-radius:10px;
+}
+
 /* CONFIRM */
-#confirmBox {
+#confirmOverlay {
     position:fixed;
-    bottom:20px;
-    left:50%;
-    transform:translateX(-50%);
-    background:#222;
-    padding:15px;
+    top:0;left:0;
+    width:100%;height:100%;
+    background:rgba(0,0,0,0.7);
     display:none;
+    justify-content:center;
+    align-items:center;
+}
+
+#confirmBox {
+    background:#111;
+    padding:20px;
+    border-radius:10px;
 }
 
 /* WAR */
@@ -68,10 +94,11 @@ body {
     display:none;
     justify-content:center;
     align-items:center;
-    font-size:60px;
+    font-size:50px;
+    text-align:center;
 }
 
-/* AI OVERLAY */
+/* AI */
 #aiOverlay {
     position:fixed;
     top:0;left:0;
@@ -95,20 +122,25 @@ body {
 
 <div id="player"></div>
 
-<div id="discard-area">
 <div id="discard-label">DISCARD PILE</div>
 <div id="discard"></div>
-</div>
 
+<div id="meld-label">TABLE MELDS</div>
+<div id="melds"></div>
+
+<br>
 <button onclick="drawDeck()">Draw Deck</button>
 <button onclick="drawDiscard()">Draw Discard</button>
 <button onclick="layMeld()">Lay Meld</button>
 </div>
 
-<div id="confirmBox">
-<span id="confirmText"></span><br>
-<button onclick="confirmDiscard()">Yes</button>
-<button onclick="cancelDiscard()">No</button>
+<!-- CONFIRM -->
+<div id="confirmOverlay">
+  <div id="confirmBox">
+    <div id="confirmText"></div>
+    <button onclick="confirmDiscard()">Yes</button>
+    <button onclick="cancelDiscard()">No</button>
+  </div>
 </div>
 
 <div id="warScreen"></div>
@@ -121,32 +153,45 @@ const suits=["♣","♦","♥","♠"];
 
 let deck=[],player=[],ai=[],discard=[];
 let selected=[],mustDiscard=false;
-let pendingIndex=null,pendingEl=null;
+let tableMelds=[];
+let pendingIndex=null;
 
-// DECK
-for(let s of suits) for(let c of order) deck.push(s+c);
+// BUILD
+for(let s of suits)
+for(let c of order) deck.push(s+c);
+
 deck.sort(()=>Math.random()-0.5);
 
 player=deck.splice(0,7);
 ai=deck.splice(0,7);
 discard=[deck.shift()];
 
-// -------- MSG --------
+// -------- MESSAGE --------
 function msg(t){ document.getElementById("msg").textContent=t; }
 
 // -------- RENDER --------
 function render(){
-    let p=document.getElementById("player"); p.innerHTML="";
+    let p=document.getElementById("player");
+    p.innerHTML="";
+
     player.forEach((c,i)=>{
         let d=document.createElement("div");
-        d.className="card"; d.textContent=c;
+        d.className="card";
+        d.textContent=c;
 
         if(selected.includes(i)) d.classList.add("selected");
 
-        d.onclick=(e)=>{
-            if(mustDiscard){ askDiscard(i,e.target); return; }
+        d.onclick=()=>{
+            if(document.getElementById("aiOverlay").style.display==="flex") return;
+
+            if(mustDiscard){
+                askDiscard(i);
+                return;
+            }
+
             if(selected.includes(i)) selected=selected.filter(x=>x!=i);
             else if(selected.length<3) selected.push(i);
+
             render();
         };
 
@@ -161,6 +206,15 @@ function render(){
         d.textContent=discard[0];
         ddiv.appendChild(d);
     }
+
+    let mdiv=document.getElementById("melds");
+    mdiv.innerHTML="";
+    tableMelds.forEach(m=>{
+        let d=document.createElement("div");
+        d.className="meld";
+        d.textContent=m.join(" ");
+        mdiv.appendChild(d);
+    });
 }
 
 // -------- DRAW --------
@@ -171,6 +225,7 @@ function drawDeck(){
     msg("Choose a card to discard");
     render();
 }
+
 function drawDiscard(){
     if(mustDiscard){ msg("Discard first"); return; }
     player.push(discard.shift());
@@ -180,27 +235,34 @@ function drawDiscard(){
 }
 
 // -------- DISCARD --------
-function askDiscard(i,el){
-    pendingIndex=i; pendingEl=el;
-    document.getElementById("confirmText").textContent="Discard "+player[i]+"?";
-    document.getElementById("confirmBox").style.display="block";
+function askDiscard(i){
+    pendingIndex=i;
+    document.getElementById("confirmText").textContent =
+        "Discard "+player[i]+"?";
+    document.getElementById("confirmOverlay").style.display="flex";
 }
+
 function confirmDiscard(){
-    document.getElementById("confirmBox").style.display="none";
+    document.getElementById("confirmOverlay").style.display="none";
+
     discard.unshift(player.splice(pendingIndex,1)[0]);
     mustDiscard=false;
+
     render();
     aiTurn();
 }
+
 function cancelDiscard(){
-    document.getElementById("confirmBox").style.display="none";
+    document.getElementById("confirmOverlay").style.display="none";
 }
 
 // -------- MELD --------
 function meldCheck(c){
     if(c.length!=3)return false;
+
     let r=c.map(x=>x.slice(1));
-    if(r[0]==r[1]&&r[1]==r[2])return true;
+    if(r[0]==r[1]&&r[1]==r[2]) return true;
+
     let s=c.map(x=>x[0]);
     if(s[0]==s[1]&&s[1]==s[2]){
         let i=c.map(x=>order.indexOf(x.slice(1))).sort((a,b)=>a-b);
@@ -216,7 +278,8 @@ async function layMeld(){
 
     if(meldCheck(m)){
         selected.sort((a,b)=>b-a).forEach(i=>player.splice(i,1));
-        msg("Meld placed!");
+        tableMelds.push(m);
+        msg("You placed meld: "+m.join(", "));
     } else {
         msg("Invalid meld → WAR!");
         await warGame();
@@ -228,17 +291,30 @@ async function layMeld(){
     aiTurn();
 }
 
-// -------- TYPEWRITER --------
+// -------- TYPE --------
 async function type(text){
     let w=document.getElementById("warScreen");
     w.innerHTML="";
+
     for(let c of text){
         w.innerHTML+=c;
         await new Promise(r=>setTimeout(r,40));
     }
+
+    w.innerHTML += "<br><span style='font-size:20px'>Click to continue...</span>";
+
+    await new Promise(resolve=>{
+        function done(){
+            document.removeEventListener("click", done);
+            document.removeEventListener("keydown", done);
+            resolve();
+        }
+        document.addEventListener("click", done);
+        document.addEventListener("keydown", done);
+    });
 }
 
-// -------- WAR (REAL) --------
+// -------- WAR --------
 async function warGame(){
     let w=document.getElementById("warScreen");
     w.style.display="flex";
@@ -253,7 +329,6 @@ async function warGame(){
 
         let p=player.shift();
         let c=ai.shift();
-
         table.push(p,c);
 
         await type(p+" vs "+c);
@@ -287,25 +362,66 @@ async function warGame(){
         }
     }
 
-    await new Promise(r=>setTimeout(r,1000));
     w.style.display="none";
 }
 
 // -------- AI --------
+function combinations(arr){
+    let res=[];
+    for(let i=0;i<arr.length;i++)
+    for(let j=i+1;j<arr.length;j++)
+    for(let k=j+1;k<arr.length;k++)
+        res.push([arr[i],arr[j],arr[k]]);
+    return res;
+}
+
+function cardScore(card,hand){
+    let rank=card.slice(1);
+    let suit=card[0];
+    let score=hand.filter(c=>c.slice(1)==rank).length;
+
+    let idx=order.indexOf(rank);
+    hand.forEach(c=>{
+        if(c[0]==suit && Math.abs(order.indexOf(c.slice(1))-idx)<=2){
+            score++;
+        }
+    });
+    return score;
+}
+
 function aiTurn(){
     let overlay=document.getElementById("aiOverlay");
     overlay.style.display="flex";
 
     setTimeout(()=>{
-        // simple smart discard
-        let worst=ai[0];
+        let drawn = Math.random()<0.5 && discard.length ? discard.shift() : deck.shift();
+        ai.push(drawn);
+        msg("AI drew a card");
+
+        for(let comb of combinations(ai)){
+            if(meldCheck(comb)){
+                comb.forEach(c=>ai.splice(ai.indexOf(c),1));
+                tableMelds.push(comb);
+                msg("AI placed meld: "+comb.join(", "));
+                break;
+            }
+        }
+
+        let worst=ai[0],min=999;
+        for(let c of ai){
+            let sc=cardScore(c,ai);
+            if(sc<min){ min=sc; worst=c; }
+        }
+
         ai.splice(ai.indexOf(worst),1);
         discard.unshift(worst);
+
+        msg("AI discarded "+worst);
 
         render();
         overlay.style.display="none";
         msg("Your Turn");
-    },1200);
+    },1400);
 }
 
 // -------- START --------
