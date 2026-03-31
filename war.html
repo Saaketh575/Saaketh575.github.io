@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Rummy + War GOD MODE FINAL</title>
+<title>Rummy + War AAA+</title>
 
 <style>
 body {
@@ -10,56 +10,67 @@ body {
     font-family: monospace;
     background: radial-gradient(circle, #000, #111);
     color:white;
+    transition: 0.3s;
+}
+
+/* FX MODE */
+body.fx {
+    background: radial-gradient(circle at center, #000, #050505, #000);
+    background-size:200% 200%;
+    animation: bgMove 10s infinite alternate;
+}
+
+@keyframes bgMove {
+    0%{background-position:0% 50%;}
+    100%{background-position:100% 50%;}
 }
 
 /* MESSAGE */
 #msg {
     text-align:center;
-    padding:10px;
+    padding:12px;
     background:#111;
     color:#0ff;
-    box-shadow:0 0 10px cyan;
+    box-shadow:0 0 15px cyan;
 }
-
-/* GAME */
-#game { text-align:center; padding:20px; }
 
 /* CARDS */
 .card {
     display:inline-block;
     padding:15px;
-    margin:5px;
+    margin:6px;
     border:2px solid white;
     border-radius:10px;
     cursor:pointer;
+    transition:0.2s;
 }
-.selected { box-shadow:0 0 20px cyan; }
+body.fx .card:hover {
+    transform:scale(1.2) rotate(2deg);
+    box-shadow:0 0 25px cyan,0 0 40px cyan;
+}
+.selected {
+    box-shadow:0 0 25px cyan;
+}
 
 /* DISCARD */
-#discard-label {
-    color:red;
-    font-size:20px;
-    text-shadow:0 0 10px red;
-}
-
 .discard-card {
     width:90px;
     height:120px;
-    border:2px solid red;
     margin:auto;
+    border:2px solid red;
     display:flex;
     align-items:center;
     justify-content:center;
-    box-shadow:0 0 25px red;
+}
+body.fx .discard-card {
+    animation:pulseRed 2s infinite;
+}
+@keyframes pulseRed {
+    from{box-shadow:0 0 10px red;}
+    to{box-shadow:0 0 30px red;}
 }
 
 /* MELDS */
-#meld-label {
-    color:#0ff;
-    font-size:20px;
-    margin-top:20px;
-}
-
 .meld {
     display:inline-block;
     border:2px solid cyan;
@@ -67,22 +78,12 @@ body {
     margin:5px;
     border-radius:10px;
 }
-
-/* CONFIRM */
-#confirmOverlay {
-    position:fixed;
-    top:0;left:0;
-    width:100%;height:100%;
-    background:rgba(0,0,0,0.7);
-    display:none;
-    justify-content:center;
-    align-items:center;
+body.fx .meld {
+    animation:glowMeld 2s infinite alternate;
 }
-
-#confirmBox {
-    background:#111;
-    padding:20px;
-    border-radius:10px;
+@keyframes glowMeld {
+    from{box-shadow:0 0 10px cyan;}
+    to{box-shadow:0 0 30px cyan;}
 }
 
 /* WAR */
@@ -92,10 +93,20 @@ body {
     width:100%;height:100%;
     background:black;
     display:none;
+    flex-direction:column;
     justify-content:center;
     align-items:center;
     font-size:50px;
-    text-align:center;
+}
+#warContent { margin-bottom:30px; }
+#warHint {
+    font-size:18px;
+    opacity:0.7;
+    animation:blink 1s infinite alternate;
+}
+@keyframes blink {
+    from{opacity:0.3;}
+    to{opacity:1;}
 }
 
 /* AI */
@@ -103,77 +114,114 @@ body {
     position:fixed;
     top:0;left:0;
     width:100%;height:100%;
-    background:rgba(0,0,0,0.8);
+    background:rgba(0,0,0,0.85);
     display:none;
     justify-content:center;
     align-items:center;
     font-size:40px;
     color:yellow;
 }
+
+/* CONFIRM */
+#confirmOverlay {
+    position:fixed;
+    width:100%;height:100%;
+    background:rgba(0,0,0,0.7);
+    display:none;
+    justify-content:center;
+    align-items:center;
+}
+#confirmBox {
+    background:#111;
+    padding:20px;
+    border-radius:10px;
+}
+
+/* BUTTON */
+button {
+    margin:5px;
+    padding:10px;
+    cursor:pointer;
+}
 </style>
 </head>
 
-<body>
+<body class="fx">
 
 <div id="msg">Your Turn</div>
 
-<div id="game">
-<h1>Rummy + War</h1>
-
-<div id="player"></div>
-
-<div id="discard-label">DISCARD PILE</div>
-<div id="discard"></div>
-
-<div id="meld-label">TABLE MELDS</div>
-<div id="melds"></div>
-
-<br>
+<div style="text-align:center;">
 <button onclick="drawDeck()">Draw Deck</button>
 <button onclick="drawDiscard()">Draw Discard</button>
 <button onclick="layMeld()">Lay Meld</button>
+<button onclick="toggleFX()">Toggle FX</button>
 </div>
+
+<div id="player" style="text-align:center;"></div>
+
+<div style="text-align:center;color:red;">DISCARD PILE</div>
+<div id="discard"></div>
+
+<div style="text-align:center;color:cyan;">TABLE MELDS</div>
+<div id="melds"></div>
 
 <!-- CONFIRM -->
 <div id="confirmOverlay">
-  <div id="confirmBox">
-    <div id="confirmText"></div>
-    <button onclick="confirmDiscard()">Yes</button>
-    <button onclick="cancelDiscard()">No</button>
-  </div>
+<div id="confirmBox">
+<div id="confirmText"></div>
+<button onclick="confirmDiscard()">Yes</button>
+<button onclick="cancelDiscard()">No</button>
+</div>
 </div>
 
-<div id="warScreen"></div>
+<!-- WAR -->
+<div id="warScreen">
+<div id="warContent"></div>
+<div id="warHint">Click to continue...</div>
+</div>
+
+<!-- AI -->
 <div id="aiOverlay">AI THINKING...</div>
 
 <script>
-// -------- GLOBAL --------
+// DATA
 const order=["2","3","4","5","6","7","8","9","X","J","Q","K","A","🤡"];
 const suits=["♣","♦","♥","♠"];
 
 let deck=[],player=[],ai=[],discard=[];
 let selected=[],mustDiscard=false;
 let tableMelds=[];
-let pendingIndex=null;
+
+// FX TOGGLE
+function toggleFX(){
+    document.body.classList.toggle("fx");
+}
 
 // BUILD
-for(let s of suits)
-for(let c of order) deck.push(s+c);
-
+for(let s of suits) for(let c of order) deck.push(s+c);
 deck.sort(()=>Math.random()-0.5);
 
 player=deck.splice(0,7);
 ai=deck.splice(0,7);
 discard=[deck.shift()];
 
-// -------- MESSAGE --------
-function msg(t){ document.getElementById("msg").textContent=t; }
+// MESSAGE QUEUE
+let q=[],busy=false;
+function msg(t){
+    q.push(t);
+    if(!busy) show();
+}
+function show(){
+    if(q.length==0){busy=false;return;}
+    busy=true;
+    document.getElementById("msg").textContent=q.shift();
+    setTimeout(show,1400);
+}
 
-// -------- RENDER --------
+// RENDER
 function render(){
     let p=document.getElementById("player");
     p.innerHTML="";
-
     player.forEach((c,i)=>{
         let d=document.createElement("div");
         d.className="card";
@@ -182,16 +230,9 @@ function render(){
         if(selected.includes(i)) d.classList.add("selected");
 
         d.onclick=()=>{
-            if(document.getElementById("aiOverlay").style.display==="flex") return;
-
-            if(mustDiscard){
-                askDiscard(i);
-                return;
-            }
-
+            if(mustDiscard){ askDiscard(i); return; }
             if(selected.includes(i)) selected=selected.filter(x=>x!=i);
             else if(selected.length<3) selected.push(i);
-
             render();
         };
 
@@ -217,72 +258,61 @@ function render(){
     });
 }
 
-// -------- DRAW --------
+// DRAW
 function drawDeck(){
-    if(mustDiscard){ msg("Discard first"); return; }
+    if(mustDiscard){msg("Discard first");return;}
     player.push(deck.shift());
     mustDiscard=true;
-    msg("Choose a card to discard");
+    msg("Choose discard");
     render();
 }
 
 function drawDiscard(){
-    if(mustDiscard){ msg("Discard first"); return; }
+    if(mustDiscard){msg("Discard first");return;}
     player.push(discard.shift());
     mustDiscard=true;
-    msg("Choose a card to discard");
+    msg("Choose discard");
     render();
 }
 
-// -------- DISCARD --------
+// DISCARD
+let pending=null;
 function askDiscard(i){
-    pendingIndex=i;
-    document.getElementById("confirmText").textContent =
-        "Discard "+player[i]+"?";
+    pending=i;
+    document.getElementById("confirmText").textContent="Discard "+player[i]+"?";
     document.getElementById("confirmOverlay").style.display="flex";
 }
-
 function confirmDiscard(){
     document.getElementById("confirmOverlay").style.display="none";
-
-    discard.unshift(player.splice(pendingIndex,1)[0]);
+    discard.unshift(player.splice(pending,1)[0]);
     mustDiscard=false;
-
     render();
     aiTurn();
 }
-
 function cancelDiscard(){
     document.getElementById("confirmOverlay").style.display="none";
 }
 
-// -------- MELD --------
+// MELD
 function meldCheck(c){
-    if(c.length!=3)return false;
-
     let r=c.map(x=>x.slice(1));
     if(r[0]==r[1]&&r[1]==r[2]) return true;
-
     let s=c.map(x=>x[0]);
-    if(s[0]==s[1]&&s[1]==s[2]){
-        let i=c.map(x=>order.indexOf(x.slice(1))).sort((a,b)=>a-b);
-        return i[0]+1==i[1]&&i[1]+1==i[2];
-    }
-    return false;
+    let i=c.map(x=>order.indexOf(x.slice(1))).sort((a,b)=>a-b);
+    return s[0]==s[1]&&s[1]==s[2]&&i[0]+1==i[1]&&i[1]+1==i[2];
 }
 
 async function layMeld(){
-    if(selected.length!=3){ msg("Select 3 cards"); return; }
-
+    if(selected.length!=3){msg("Select 3 cards");return;}
     let m=selected.map(i=>player[i]);
 
     if(meldCheck(m)){
         selected.sort((a,b)=>b-a).forEach(i=>player.splice(i,1));
         tableMelds.push(m);
-        msg("You placed meld: "+m.join(", "));
+        msg("You melded "+m.join(", "));
     } else {
-        msg("Invalid meld → WAR!");
-        await warGame();
+        msg("WAR!");
+        await war();
     }
 
     selected=[];
@@ -291,140 +321,107 @@ async function layMeld(){
     aiTurn();
 }
 
-// -------- TYPE --------
+// WAR
 async function type(text){
-    let w=document.getElementById("warScreen");
-    w.innerHTML="";
-
-    for(let c of text){
-        w.innerHTML+=c;
-        await new Promise(r=>setTimeout(r,40));
+    let c=document.getElementById("warContent");
+    c.innerHTML="";
+    for(let ch of text){
+        c.innerHTML+=ch;
+        await new Promise(r=>setTimeout(r,35));
     }
-
-    w.innerHTML += "<br><span style='font-size:20px'>Click to continue...</span>";
-
-    await new Promise(resolve=>{
+    await new Promise(res=>{
         function done(){
-            document.removeEventListener("click", done);
-            document.removeEventListener("keydown", done);
-            resolve();
+            document.removeEventListener("click",done);
+            res();
         }
-        document.addEventListener("click", done);
-        document.addEventListener("keydown", done);
+        document.addEventListener("click",done);
     });
 }
 
-// -------- WAR --------
-async function warGame(){
+async function war(){
     let w=document.getElementById("warScreen");
     w.style.display="flex";
 
-    let table=[],moves=0;
+    let moves=0;
 
     while(true){
-        if(player.length<2||ai.length<2){
-            await type("TIE");
-            break;
-        }
-
         let p=player.shift();
         let c=ai.shift();
-        table.push(p,c);
 
         await type(p+" vs "+c);
 
         if(order.indexOf(p.slice(1))>order.indexOf(c.slice(1))){
-            await type("PLAYER WINS ROUND");
-            player.push(...table);
-            table=[]; moves++;
+            player.push(p,c);
+            await type("PLAYER WINS");
         } else if(order.indexOf(p.slice(1))<order.indexOf(c.slice(1))){
-            await type("AI WINS ROUND");
-            ai.push(...table);
-            table=[]; moves++;
+            ai.push(p,c);
+            await type("AI WINS");
         } else {
             await type("WAR!");
-            if(player.length<4||ai.length<4){
-                await type("TIE");
-                break;
-            }
-            table.push(...player.splice(0,3),...ai.splice(0,3));
         }
 
-        if(moves>=10){
-            if(player.length>ai.length){
-                await type("PLAYER WINS WAR");
-                player.push(...deck.splice(0,1));
-            } else {
-                await type("AI WINS WAR");
-                ai.push(...deck.splice(0,1));
-            }
-            break;
-        }
+        moves++;
+        if(moves>5) break;
     }
 
     w.style.display="none";
 }
 
-// -------- AI --------
-function combinations(arr){
-    let res=[];
-    for(let i=0;i<arr.length;i++)
-    for(let j=i+1;j<arr.length;j++)
-    for(let k=j+1;k<arr.length;k++)
-        res.push([arr[i],arr[j],arr[k]]);
-    return res;
+// AI
+function combinations(a){
+    let r=[];
+    for(let i=0;i<a.length;i++)
+    for(let j=i+1;j<a.length;j++)
+    for(let k=j+1;k<a.length;k++)
+        r.push([a[i],a[j],a[k]]);
+    return r;
 }
 
-function cardScore(card,hand){
-    let rank=card.slice(1);
-    let suit=card[0];
-    let score=hand.filter(c=>c.slice(1)==rank).length;
-
-    let idx=order.indexOf(rank);
-    hand.forEach(c=>{
-        if(c[0]==suit && Math.abs(order.indexOf(c.slice(1))-idx)<=2){
-            score++;
-        }
+function score(c,h){
+    let r=c.slice(1),s=c[0];
+    let sc=h.filter(x=>x.slice(1)==r).length;
+    let idx=order.indexOf(r);
+    h.forEach(x=>{
+        if(x[0]==s && Math.abs(order.indexOf(x.slice(1))-idx)<=2) sc++;
     });
-    return score;
+    return sc;
 }
 
 function aiTurn(){
-    let overlay=document.getElementById("aiOverlay");
-    overlay.style.display="flex";
+    document.getElementById("aiOverlay").style.display="flex";
 
     setTimeout(()=>{
-        let drawn = Math.random()<0.5 && discard.length ? discard.shift() : deck.shift();
-        ai.push(drawn);
-        msg("AI drew a card");
+        let draw = Math.random()<0.5?deck.shift():discard.shift();
+        ai.push(draw);
+        msg("AI picked a card");
 
         for(let comb of combinations(ai)){
             if(meldCheck(comb)){
                 comb.forEach(c=>ai.splice(ai.indexOf(c),1));
                 tableMelds.push(comb);
-                msg("AI placed meld: "+comb.join(", "));
+                msg("AI melded "+comb.join(", "));
                 break;
             }
         }
 
         let worst=ai[0],min=999;
         for(let c of ai){
-            let sc=cardScore(c,ai);
-            if(sc<min){ min=sc; worst=c; }
+            let sc=score(c,ai);
+            if(sc<min){min=sc;worst=c;}
         }
 
         ai.splice(ai.indexOf(worst),1);
         discard.unshift(worst);
-
         msg("AI discarded "+worst);
 
         render();
-        overlay.style.display="none";
+        document.getElementById("aiOverlay").style.display="none";
         msg("Your Turn");
-    },1400);
+
+    },1200);
 }
 
-// -------- START --------
+// START
 render();
 </script>
 
