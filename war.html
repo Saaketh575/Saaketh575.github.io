@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Rummy War GOD MODE FINAL</title>
+<title>Rummy War GOD MODE</title>
 
 <style>
 body{
@@ -13,27 +13,31 @@ body{
 }
 
 /* INTRO */
-#introScreen{
+#intro{
     position:fixed;
-    width:100%;
-    height:100%;
+    width:100%;height:100%;
     background:black;
     display:flex;
     justify-content:center;
     align-items:center;
-    z-index:5000;
+    flex-direction:column;
+    z-index:9999;
 }
-#introBox{
+
+#introText{
     max-width:700px;
-    padding:30px;
     text-align:center;
+    line-height:1.6;
 }
-#startHint{
+
+#start{
     margin-top:20px;
-    opacity:0.7;
+    opacity:0.6;
     animation:blink 1s infinite alternate;
 }
-@keyframes blink{from{opacity:0.3;}to{opacity:1;}}
+@keyframes blink{
+    from{opacity:0.3;}to{opacity:1;}
+}
 
 /* BUTTONS */
 button{
@@ -43,7 +47,6 @@ button{
     padding:10px;
     margin:5px;
     border-radius:8px;
-    cursor:pointer;
 }
 
 /* CARDS */
@@ -55,13 +58,16 @@ button{
     border-radius:8px;
     cursor:pointer;
 }
-.selected{ box-shadow:0 0 15px cyan; }
+.selected{ box-shadow:0 0 20px cyan; }
 
-/* DISCARD */
+/* DISCARD CENTER */
+#discardBox{
+    text-align:center;
+}
 .discard-card{
-    width:80px;height:110px;
-    margin:auto;
+    width:90px;height:120px;
     border:2px solid red;
+    margin:auto;
     display:flex;
     align-items:center;
     justify-content:center;
@@ -69,14 +75,14 @@ button{
 
 /* MELDS */
 .meld{
-    display:inline-block;
     border:2px solid cyan;
     padding:8px;
-    margin:4px;
+    margin:5px;
+    display:inline-block;
 }
 
-/* OVERLAY */
-#aiOverlay,#warScreen{
+/* OVERLAYS */
+#aiOverlay,#warOverlay{
     position:fixed;
     width:100%;
     height:100%;
@@ -84,20 +90,26 @@ button{
     justify-content:center;
     align-items:center;
     flex-direction:column;
-    font-size:40px;
-    background:rgba(0,0,0,0.9);
-    z-index:3000;
+    font-size:45px;
+    background:rgba(0,0,0,0.95);
+    z-index:5000;
+}
+
+#continue{
+    margin-top:20px;
+    font-size:18px;
+    opacity:0.7;
 }
 
 /* CONFIRM */
-#confirmOverlay{
+#confirm{
     position:fixed;
     width:100%;
     height:100%;
-    background:rgba(0,0,0,0.7);
     display:none;
     justify-content:center;
     align-items:center;
+    background:rgba(0,0,0,0.8);
 }
 </style>
 </head>
@@ -105,42 +117,39 @@ button{
 <body>
 
 <!-- INTRO -->
-<div id="introScreen">
-<div id="introBox">
-<h1>🃏 RUMMY × WAR</h1>
+<div id="intro">
 <div id="introText"></div>
-<div id="startHint">Click to start</div>
-</div>
+<div id="start">Click to start</div>
 </div>
 
 <!-- GAME -->
-<div id="gameUI" style="display:none">
+<div id="game" style="display:none">
 
-<div id="msg" style="text-align:center;color:#0ff;">Your Turn</div>
-
-<div style="text-align:center;">
+<div style="text-align:center">
 <button onclick="drawDeck()">Draw Deck</button>
 <button onclick="drawDiscard()">Draw Discard</button>
 <button onclick="layMeld()">Lay Meld</button>
 <button onclick="declareRummy()">Declare Rummy</button>
 </div>
 
-<div id="player" style="text-align:center;"></div>
+<div id="player" style="text-align:center"></div>
 
-<div style="text-align:center;color:red;">DISCARD PILE</div>
+<div id="discardBox">
+<div>DISCARD PILE</div>
 <div id="discard"></div>
+</div>
 
-<div style="text-align:center;color:cyan;">TABLE MELDS</div>
+<div style="text-align:center">TABLE MELDS</div>
 <div id="melds"></div>
 
 </div>
 
 <!-- CONFIRM -->
-<div id="confirmOverlay">
-<div style="background:#111;padding:20px;">
+<div id="confirm">
+<div style="background:#111;padding:20px">
 <div id="confirmText"></div>
-<button onclick="confirmDiscard()">Yes</button>
-<button onclick="cancelDiscard()">No</button>
+<button onclick="yesDiscard()">YES</button>
+<button onclick="noDiscard()">NO</button>
 </div>
 </div>
 
@@ -148,22 +157,21 @@ button{
 <div id="aiOverlay"></div>
 
 <!-- WAR -->
-<div id="warScreen">
-<div id="warContent"></div>
-<div>Click to continue...</div>
+<div id="warOverlay">
+<div id="warText"></div>
+<div id="continue">Click to continue</div>
 </div>
 
 <script>
 // ================= INTRO =================
 const introLines=[
-"Welcome to Rummy + War.",
-"A hybrid strategy card game.",
-"Invalid melds trigger WAR.",
-"Form 2 melds including a run.",
-"Declare RUMMY to win."
+"Welcome to Rummy War.",
+"Build melds. Trigger wars.",
+"Think carefully.",
+"Or lose everything."
 ];
 
-async function typeIntro(){
+async function introType(){
     let box=document.getElementById("introText");
     for(let line of introLines){
         for(let c of line){
@@ -173,23 +181,23 @@ async function typeIntro(){
         box.innerHTML+="<br><br>";
     }
 }
-typeIntro();
+introType();
 
 document.onclick=()=>{
-    document.getElementById("introScreen").style.display="none";
-    document.getElementById("gameUI").style.display="block";
+    document.getElementById("intro").style.display="none";
+    document.getElementById("game").style.display="block";
 };
 
-// ================= GAME =================
+// ================= DATA =================
 const order=["2","3","4","5","6","7","8","9","X","J","Q","K","A","🤡"];
 const suits=["♣","♦","♥","♠"];
 
 let deck=[],player=[],ai=[],discard=[];
-let selected=[],mustDiscard=false,tableMelds=[];
-let playerMelds=[],aiMelds=[];
+let selected=[],mustDiscard=false;
+let tableMelds=[];
 let pending=null;
 
-// BUILD
+// BUILD DECK
 for(let s of suits) for(let c of order) deck.push(s+c);
 deck.sort(()=>Math.random()-0.5);
 
@@ -198,37 +206,34 @@ ai=deck.splice(0,7);
 discard=[deck.shift()];
 
 // ================= LOGIC =================
-function meldCheck(cardlist){
-    let r=cardlist.map(c=>c.slice(1));
+function meldCheck(c){
+    let r=c.map(x=>x.slice(1));
     if(r[0]==r[1]&&r[1]==r[2]) return true;
 
-    let s=cardlist.map(c=>c[0]);
-    let idx=cardlist.map(c=>order.indexOf(c.slice(1))).sort((a,b)=>a-b);
+    let s=c.map(x=>x[0]);
+    let i=c.map(x=>order.indexOf(x.slice(1))).sort((a,b)=>a-b);
 
-    return s[0]==s[1]&&s[1]==s[2] &&
-           idx[0]+1==idx[1]&&idx[1]+1==idx[2];
+    return s[0]==s[1]&&i[0]+1==i[1]&&i[1]+1==i[2];
 }
 
-function cardscore(card, hand){
-    let suit=card[0],rank=card.slice(1);
-    let score=hand.filter(c=>c.slice(1)==rank).length;
+function cardscore(card,hand){
+    let r=card.slice(1),s=card[0];
+    let score=hand.filter(c=>c.slice(1)==r).length;
 
-    let idx=order.indexOf(rank);
+    let idx=order.indexOf(r);
     hand.forEach(c=>{
-        if(c[0]==suit && Math.abs(order.indexOf(c.slice(1))-idx)<=2){
+        if(c[0]==s && Math.abs(order.indexOf(c.slice(1))-idx)<=2){
             score++;
         }
     });
     return score;
 }
 
-function choosediscard(hand){
-    return hand.reduce((worst,c)=>{
-        return cardscore(c,hand)<cardscore(worst,hand)?c:worst;
-    },hand[0]);
+function chooseDiscard(hand){
+    return hand.reduce((a,b)=>cardscore(a,hand)<cardscore(b,hand)?a:b);
 }
 
-function isuseful(card, hand){
+function isUseful(card,hand){
     for(let i=0;i<hand.length;i++)
     for(let j=i+1;j<hand.length;j++){
         if(meldCheck([card,hand[i],hand[j]])) return true;
@@ -238,11 +243,13 @@ function isuseful(card, hand){
 
 // ================= RENDER =================
 function render(){
-    let p=document.getElementById("player"); p.innerHTML="";
+    let p=document.getElementById("player");
+    p.innerHTML="";
     player.forEach((c,i)=>{
         let d=document.createElement("div");
         d.className="card";
         d.textContent=c;
+
         if(selected.includes(i)) d.classList.add("selected");
 
         d.onclick=()=>{
@@ -256,20 +263,18 @@ function render(){
 
     let ddiv=document.getElementById("discard");
     ddiv.innerHTML="";
-    if(discard.length){
-        let d=document.createElement("div");
-        d.className="discard-card";
-        d.textContent=discard[0];
-        ddiv.appendChild(d);
-    }
+    let d=document.createElement("div");
+    d.className="discard-card";
+    d.textContent=discard[0];
+    ddiv.appendChild(d);
 
     let mdiv=document.getElementById("melds");
     mdiv.innerHTML="";
     tableMelds.forEach(m=>{
-        let d=document.createElement("div");
-        d.className="meld";
-        d.textContent=m.join(" ");
-        mdiv.appendChild(d);
+        let x=document.createElement("div");
+        x.className="meld";
+        x.textContent=m.join(" ");
+        mdiv.appendChild(x);
     });
 }
 
@@ -290,102 +295,137 @@ function drawDiscard(){
 // ================= DISCARD =================
 function askDiscard(i){
     pending=i;
-    document.getElementById("confirmOverlay").style.display="flex";
+    document.getElementById("confirm").style.display="flex";
     document.getElementById("confirmText").textContent="Discard "+player[i]+"?";
 }
-function confirmDiscard(){
+function yesDiscard(){
     discard.unshift(player.splice(pending,1)[0]);
     mustDiscard=false;
-    document.getElementById("confirmOverlay").style.display="none";
+    document.getElementById("confirm").style.display="none";
     render();
     aiTurn();
 }
-function cancelDiscard(){
-    document.getElementById("confirmOverlay").style.display="none";
+function noDiscard(){
+    document.getElementById("confirm").style.display="none";
+}
+
+// ================= OVERLAY =================
+async function invade(text){
+    let o=document.getElementById("aiOverlay");
+    o.innerHTML=text;
+    o.style.display="flex";
+    await new Promise(r=>setTimeout(r,1200));
+    o.style.display="none";
 }
 
 // ================= WAR =================
 async function war(){
-    let table=[];
-    let moves=0;
-    let w=document.getElementById("warScreen");
-    let c=document.getElementById("warContent");
-
+    let w=document.getElementById("warOverlay");
+    let t=document.getElementById("warText");
     w.style.display="flex";
 
     while(true){
         let p=player.shift();
-        let a=ai.shift();
+        let c=ai.shift();
 
-        table.push(p,a);
-        c.innerHTML=p+" vs "+a;
-
+        t.textContent=p+" vs "+c;
         await new Promise(r=>setTimeout(r,800));
 
-        if(order.indexOf(p.slice(1))>order.indexOf(a.slice(1))){
-            player.push(...table);
+        if(order.indexOf(p.slice(1))>order.indexOf(c.slice(1))){
+            player.push(p,c);
             break;
         }
-        if(order.indexOf(p.slice(1))<order.indexOf(a.slice(1))){
-            ai.push(...table);
-            break;
-        }
-
-        if(player.length<4 || ai.length<4){
+        if(order.indexOf(p.slice(1))<order.indexOf(c.slice(1))){
+            ai.push(p,c);
             break;
         }
 
-        table.push(...player.splice(0,3));
-        table.push(...ai.splice(0,3));
-        moves++;
-        if(moves>5) break;
+        t.textContent="WAR!";
+        await new Promise(r=>setTimeout(r,800));
     }
+
+    await new Promise(res=>{
+        document.onclick=res;
+    });
 
     w.style.display="none";
 }
 
+// ================= MELD =================
+async function layMeld(){
+    if(selected.length!=3) return;
+
+    let m=selected.map(i=>player[i]);
+
+    if(meldCheck(m)){
+        selected.sort((a,b)=>b-a).forEach(i=>player.splice(i,1));
+        tableMelds.push(m);
+    } else {
+        await invade("⚔️ WAR DECLARED ⚔️");
+        await war();
+    }
+
+    selected=[];
+    mustDiscard=false;
+    render();
+    aiTurn();
+}
+
 // ================= AI =================
-function aiTurn(){
-    setTimeout(()=>{
-        let top=discard[0];
-        if(isuseful(top,ai)){
-            ai.push(discard.shift());
-        } else {
-            ai.push(deck.shift());
+async function aiTurn(){
+    await invade("AI TURN");
+
+    let top=discard[0];
+    if(isUseful(top,ai)){
+        await invade("AI TOOK DISCARD");
+        ai.push(discard.shift());
+    } else {
+        await invade("AI DREW DECK");
+        ai.push(deck.shift());
+    }
+
+    // meld attempt
+    for(let i=0;i<ai.length;i++)
+    for(let j=i+1;j<ai.length;j++)
+    for(let k=j+1;k<ai.length;k++){
+        let m=[ai[i],ai[j],ai[k]];
+        if(meldCheck(m)){
+            await invade("AI MELDED "+m.join(", "));
+            m.forEach(c=>ai.splice(ai.indexOf(c),1));
+            tableMelds.push(m);
+            break;
         }
+    }
 
-        for(let i=0;i<ai.length;i++)
-        for(let j=i+1;j<ai.length;j++)
-        for(let k=j+1;k<ai.length;k++){
-            let m=[ai[i],ai[j],ai[k]];
-            if(meldCheck(m)){
-                m.forEach(c=>ai.splice(ai.indexOf(c),1));
-                tableMelds.push(m);
-                break;
-            }
-        }
+    let d=chooseDiscard(ai);
+    ai.splice(ai.indexOf(d),1);
+    discard.unshift(d);
 
-        let d=choosediscard(ai);
-        ai.splice(ai.indexOf(d),1);
-        discard.unshift(d);
+    await invade("AI DISCARDED "+d);
 
-        render();
-    },1000);
+    render();
 }
 
 // ================= RUMMY =================
-function declareRummy(){
-    if(tableMelds.length<2) return;
-    let hasRun=tableMelds.some(m=>{
+async function declareRummy(){
+    if(tableMelds.length<2){
+        await invade("NOT ENOUGH MELDS");
+        return;
+    }
+
+    let run=tableMelds.some(m=>{
         let s=m.map(c=>c[0]);
         let i=m.map(c=>order.indexOf(c.slice(1))).sort((a,b)=>a-b);
         return s[0]==s[1]&&i[0]+1==i[1]&&i[1]+1==i[2];
     });
-    if(!hasRun){
-        war();
+
+    if(!run){
+        await invade("NO RUN → WAR");
+        await war();
         return;
     }
-    alert("YOU WIN");
+
+    await invade("YOU WIN RUMMY");
 }
 
 // START
