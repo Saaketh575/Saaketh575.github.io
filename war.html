@@ -2,65 +2,64 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Rummy + War FINAL CLEAN</title>
+<title>Rummy War GOD MODE FINAL</title>
 
 <style>
-body {
+body{
     margin:0;
-    font-family: monospace;
-    background:#000;
+    font-family:monospace;
+    background:black;
     color:white;
 }
 
-/* FX */
-body.fx {
-    background: radial-gradient(circle at center, #000, #050505, #000);
-    background-size:200% 200%;
-    animation:bgMove 10s infinite alternate;
+/* INTRO */
+#introScreen{
+    position:fixed;
+    width:100%;
+    height:100%;
+    background:black;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    z-index:5000;
 }
-@keyframes bgMove {
-    0%{background-position:0% 50%;}
-    100%{background-position:100% 50%;}
-}
-
-/* MESSAGE */
-#msg {
+#introBox{
+    max-width:700px;
+    padding:30px;
     text-align:center;
-    padding:10px;
-    color:#0ff;
 }
+#startHint{
+    margin-top:20px;
+    opacity:0.7;
+    animation:blink 1s infinite alternate;
+}
+@keyframes blink{from{opacity:0.3;}to{opacity:1;}}
 
-/* BUTTONS AAA */
-button {
-    background: linear-gradient(135deg, #111, #222);
+/* BUTTONS */
+button{
+    background:#111;
     color:#0ff;
     border:2px solid #0ff;
-    padding:12px 18px;
-    margin:6px;
-    border-radius:10px;
+    padding:10px;
+    margin:5px;
+    border-radius:8px;
     cursor:pointer;
-    box-shadow:0 0 10px cyan;
-    transition:0.25s;
-}
-button:hover {
-    transform:scale(1.1);
-    box-shadow:0 0 20px cyan,0 0 40px cyan;
 }
 
 /* CARDS */
-.card {
+.card{
     display:inline-block;
-    padding:15px;
+    padding:12px;
     margin:5px;
     border:2px solid white;
-    border-radius:10px;
+    border-radius:8px;
     cursor:pointer;
 }
-.selected { box-shadow:0 0 20px cyan; }
+.selected{ box-shadow:0 0 15px cyan; }
 
 /* DISCARD */
-.discard-card {
-    width:90px;height:120px;
+.discard-card{
+    width:80px;height:110px;
     margin:auto;
     border:2px solid red;
     display:flex;
@@ -69,37 +68,32 @@ button:hover {
 }
 
 /* MELDS */
-.meld {
+.meld{
     display:inline-block;
     border:2px solid cyan;
-    padding:10px;
-    margin:5px;
+    padding:8px;
+    margin:4px;
 }
 
-/* OVERLAYS */
-#aiOverlay, #warScreen {
+/* OVERLAY */
+#aiOverlay,#warScreen{
     position:fixed;
-    top:0;left:0;
-    width:100%;height:100%;
+    width:100%;
+    height:100%;
     display:none;
     justify-content:center;
     align-items:center;
     flex-direction:column;
     font-size:40px;
     background:rgba(0,0,0,0.9);
-    z-index:2000;
-}
-
-#warHint {
-    font-size:18px;
-    margin-top:20px;
-    opacity:0.7;
+    z-index:3000;
 }
 
 /* CONFIRM */
-#confirmOverlay {
+#confirmOverlay{
     position:fixed;
-    width:100%;height:100%;
+    width:100%;
+    height:100%;
     background:rgba(0,0,0,0.7);
     display:none;
     justify-content:center;
@@ -108,16 +102,27 @@ button:hover {
 </style>
 </head>
 
-<body class="fx">
+<body>
 
-<div id="msg">Your Turn</div>
+<!-- INTRO -->
+<div id="introScreen">
+<div id="introBox">
+<h1>🃏 RUMMY × WAR</h1>
+<div id="introText"></div>
+<div id="startHint">Click to start</div>
+</div>
+</div>
+
+<!-- GAME -->
+<div id="gameUI" style="display:none">
+
+<div id="msg" style="text-align:center;color:#0ff;">Your Turn</div>
 
 <div style="text-align:center;">
 <button onclick="drawDeck()">Draw Deck</button>
 <button onclick="drawDiscard()">Draw Discard</button>
 <button onclick="layMeld()">Lay Meld</button>
 <button onclick="declareRummy()">Declare Rummy</button>
-<button onclick="toggleFX()">Toggle FX</button>
 </div>
 
 <div id="player" style="text-align:center;"></div>
@@ -127,6 +132,8 @@ button:hover {
 
 <div style="text-align:center;color:cyan;">TABLE MELDS</div>
 <div id="melds"></div>
+
+</div>
 
 <!-- CONFIRM -->
 <div id="confirmOverlay">
@@ -143,21 +150,44 @@ button:hover {
 <!-- WAR -->
 <div id="warScreen">
 <div id="warContent"></div>
-<div id="warHint">Click to continue...</div>
+<div>Click to continue...</div>
 </div>
 
 <script>
-// DATA
+// ================= INTRO =================
+const introLines=[
+"Welcome to Rummy + War.",
+"A hybrid strategy card game.",
+"Invalid melds trigger WAR.",
+"Form 2 melds including a run.",
+"Declare RUMMY to win."
+];
+
+async function typeIntro(){
+    let box=document.getElementById("introText");
+    for(let line of introLines){
+        for(let c of line){
+            box.innerHTML+=c;
+            await new Promise(r=>setTimeout(r,20));
+        }
+        box.innerHTML+="<br><br>";
+    }
+}
+typeIntro();
+
+document.onclick=()=>{
+    document.getElementById("introScreen").style.display="none";
+    document.getElementById("gameUI").style.display="block";
+};
+
+// ================= GAME =================
 const order=["2","3","4","5","6","7","8","9","X","J","Q","K","A","🤡"];
 const suits=["♣","♦","♥","♠"];
 
 let deck=[],player=[],ai=[],discard=[];
-let selected=[],mustDiscard=false;
-let tableMelds=[];
+let selected=[],mustDiscard=false,tableMelds=[];
+let playerMelds=[],aiMelds=[];
 let pending=null;
-
-// FX
-function toggleFX(){ document.body.classList.toggle("fx"); }
 
 // BUILD
 for(let s of suits) for(let c of order) deck.push(s+c);
@@ -167,28 +197,58 @@ player=deck.splice(0,7);
 ai=deck.splice(0,7);
 discard=[deck.shift()];
 
-// MESSAGE
-function msg(t){
-    document.getElementById("msg").textContent=t;
+// ================= LOGIC =================
+function meldCheck(cardlist){
+    let r=cardlist.map(c=>c.slice(1));
+    if(r[0]==r[1]&&r[1]==r[2]) return true;
+
+    let s=cardlist.map(c=>c[0]);
+    let idx=cardlist.map(c=>order.indexOf(c.slice(1))).sort((a,b)=>a-b);
+
+    return s[0]==s[1]&&s[1]==s[2] &&
+           idx[0]+1==idx[1]&&idx[1]+1==idx[2];
 }
 
-// RENDER
+function cardscore(card, hand){
+    let suit=card[0],rank=card.slice(1);
+    let score=hand.filter(c=>c.slice(1)==rank).length;
+
+    let idx=order.indexOf(rank);
+    hand.forEach(c=>{
+        if(c[0]==suit && Math.abs(order.indexOf(c.slice(1))-idx)<=2){
+            score++;
+        }
+    });
+    return score;
+}
+
+function choosediscard(hand){
+    return hand.reduce((worst,c)=>{
+        return cardscore(c,hand)<cardscore(worst,hand)?c:worst;
+    },hand[0]);
+}
+
+function isuseful(card, hand){
+    for(let i=0;i<hand.length;i++)
+    for(let j=i+1;j<hand.length;j++){
+        if(meldCheck([card,hand[i],hand[j]])) return true;
+    }
+    return false;
+}
+
+// ================= RENDER =================
 function render(){
-    let p=document.getElementById("player");
-    p.innerHTML="";
+    let p=document.getElementById("player"); p.innerHTML="";
     player.forEach((c,i)=>{
         let d=document.createElement("div");
         d.className="card";
         d.textContent=c;
-
         if(selected.includes(i)) d.classList.add("selected");
 
         d.onclick=()=>{
-            if(mustDiscard){ askDiscard(i); return; }
-
+            if(mustDiscard){askDiscard(i);return;}
             if(selected.includes(i)) selected=selected.filter(x=>x!=i);
             else if(selected.length<3) selected.push(i);
-
             render();
         };
         p.appendChild(d);
@@ -213,24 +273,21 @@ function render(){
     });
 }
 
-// DRAW
+// ================= DRAW =================
 function drawDeck(){
-    if(mustDiscard){msg("Discard first");return;}
+    if(mustDiscard)return;
     player.push(deck.shift());
     mustDiscard=true;
-    msg("Choose discard");
     render();
 }
-
 function drawDiscard(){
-    if(mustDiscard){msg("Discard first");return;}
+    if(mustDiscard)return;
     player.push(discard.shift());
     mustDiscard=true;
-    msg("Choose discard");
     render();
 }
 
-// DISCARD
+// ================= DISCARD =================
 function askDiscard(i){
     pending=i;
     document.getElementById("confirmOverlay").style.display="flex";
@@ -247,118 +304,39 @@ function cancelDiscard(){
     document.getElementById("confirmOverlay").style.display="none";
 }
 
-// MELD LOGIC
-function meldCheck(c){
-    let r=c.map(x=>x.slice(1));
-    if(r[0]==r[1]&&r[1]==r[2]) return true;
-
-    let s=c.map(x=>x[0]);
-    let i=c.map(x=>order.indexOf(x.slice(1))).sort((a,b)=>a-b);
-
-    return s[0]==s[1]&&s[1]==s[2] &&
-           i[0]+1==i[1]&&i[1]+1==i[2];
-}
-
-function hasRun(melds){
-    for(let m of melds){
-        let s=m.map(c=>c[0]);
-        let i=m.map(c=>order.indexOf(c.slice(1))).sort((a,b)=>a-b);
-        if(s[0]==s[1]&&s[1]==s[2] &&
-           i[0]+1==i[1]&&i[1]+1==i[2]){
-            return true;
-        }
-    }
-    return false;
-}
-
-// DECLARE RUMMY
-function declareRummy(){
-    if(tableMelds.length < 2){
-        msg("Need 2 melds");
-        return;
-    }
-
-    if(!hasRun(tableMelds)){
-        showOverlay("NO RUN → WAR!");
-        setTimeout(()=>war(),1200);
-        return;
-    }
-
-    showOverlay("YOU DECLARED RUMMY!");
-}
-
-// OVERLAY (NO OVERLAP)
-function showOverlay(text){
-    let aiO=document.getElementById("aiOverlay");
-    let warO=document.getElementById("warScreen");
-
-    warO.style.display="none"; // force hide war
-
-    aiO.innerHTML=text;
-    aiO.style.display="flex";
-
-    setTimeout(()=>{
-        aiO.style.display="none";
-    },1200);
-}
-
-// MELD PLAY
-function layMeld(){
-    if(selected.length!=3){msg("Select 3 cards");return;}
-
-    let m=selected.map(i=>player[i]);
-
-    if(meldCheck(m)){
-        selected.sort((a,b)=>b-a).forEach(i=>player.splice(i,1));
-        tableMelds.push(m);
-        msg("Meld placed");
-    } else {
-        showOverlay("⚔️ WAR DECLARED ⚔️");
-        setTimeout(()=>war(),1200);
-    }
-
-    selected=[];
-    mustDiscard=false;
-    render();
-    aiTurn();
-}
-
-// WAR (no overlap now)
-async function type(text){
-    let c=document.getElementById("warContent");
-    c.innerHTML="";
-    for(let ch of text){
-        c.innerHTML+=ch;
-        await new Promise(r=>setTimeout(r,35));
-    }
-
-    await new Promise(res=>{
-        document.onclick=()=>res();
-    });
-}
-
+// ================= WAR =================
 async function war(){
-    let w=document.getElementById("warScreen");
-    w.style.display="flex";
-
+    let table=[];
     let moves=0;
+    let w=document.getElementById("warScreen");
+    let c=document.getElementById("warContent");
+
+    w.style.display="flex";
 
     while(true){
         let p=player.shift();
-        let c=ai.shift();
+        let a=ai.shift();
 
-        await type(p+" vs "+c);
+        table.push(p,a);
+        c.innerHTML=p+" vs "+a;
 
-        if(order.indexOf(p.slice(1))>order.indexOf(c.slice(1))){
-            player.push(p,c);
-            await type("PLAYER WINS");
-        } else if(order.indexOf(p.slice(1))<order.indexOf(c.slice(1))){
-            ai.push(p,c);
-            await type("AI WINS");
-        } else {
-            await type("WAR!");
+        await new Promise(r=>setTimeout(r,800));
+
+        if(order.indexOf(p.slice(1))>order.indexOf(a.slice(1))){
+            player.push(...table);
+            break;
+        }
+        if(order.indexOf(p.slice(1))<order.indexOf(a.slice(1))){
+            ai.push(...table);
+            break;
         }
 
+        if(player.length<4 || ai.length<4){
+            break;
+        }
+
+        table.push(...player.splice(0,3));
+        table.push(...ai.splice(0,3));
         moves++;
         if(moves>5) break;
     }
@@ -366,67 +344,48 @@ async function war(){
     w.style.display="none";
 }
 
-// AI
-function combinations(a){
-    let r=[];
-    for(let i=0;i<a.length;i++)
-    for(let j=i+1;j<a.length;j++)
-    for(let k=j+1;k<a.length;k++)
-        r.push([a[i],a[j],a[k]]);
-    return r;
-}
-
-function score(c,h){
-    let r=c.slice(1),s=c[0];
-    let sc=h.filter(x=>x.slice(1)==r).length;
-    let idx=order.indexOf(r);
-
-    h.forEach(x=>{
-        if(x[0]==s && Math.abs(order.indexOf(x.slice(1))-idx)<=2){
-            sc++;
-        }
-    });
-    return sc;
-}
-
+// ================= AI =================
 function aiTurn(){
     setTimeout(()=>{
-        let drawn;
-
-        if(Math.random()<0.5 && discard.length){
-            drawn=discard.shift();
-            showOverlay("AI TOOK FROM DISCARD");
+        let top=discard[0];
+        if(isuseful(top,ai)){
+            ai.push(discard.shift());
         } else {
-            drawn=deck.shift();
-            showOverlay("AI DREW FROM DECK");
+            ai.push(deck.shift());
         }
 
-        ai.push(drawn);
-
-        for(let comb of combinations(ai)){
-            if(meldCheck(comb)){
-                comb.forEach(c=>ai.splice(ai.indexOf(c),1));
-                tableMelds.push(comb);
-                showOverlay("AI MELDED: "+comb.join(", "));
+        for(let i=0;i<ai.length;i++)
+        for(let j=i+1;j<ai.length;j++)
+        for(let k=j+1;k<ai.length;k++){
+            let m=[ai[i],ai[j],ai[k]];
+            if(meldCheck(m)){
+                m.forEach(c=>ai.splice(ai.indexOf(c),1));
+                tableMelds.push(m);
                 break;
             }
         }
 
-        let worst=ai[0],min=999;
-        for(let c of ai){
-            let sc=score(c,ai);
-            if(sc<min){min=sc;worst=c;}
-        }
-
-        ai.splice(ai.indexOf(worst),1);
-        discard.unshift(worst);
-
-        showOverlay("AI DISCARDED: "+worst);
+        let d=choosediscard(ai);
+        ai.splice(ai.indexOf(d),1);
+        discard.unshift(d);
 
         render();
-        msg("Your Turn");
-
     },1000);
+}
+
+// ================= RUMMY =================
+function declareRummy(){
+    if(tableMelds.length<2) return;
+    let hasRun=tableMelds.some(m=>{
+        let s=m.map(c=>c[0]);
+        let i=m.map(c=>order.indexOf(c.slice(1))).sort((a,b)=>a-b);
+        return s[0]==s[1]&&i[0]+1==i[1]&&i[1]+1==i[2];
+    });
+    if(!hasRun){
+        war();
+        return;
+    }
+    alert("YOU WIN");
 }
 
 // START
