@@ -2,24 +2,22 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Rummy + War AAA+</title>
+<title>Rummy + War GOD MODE FINAL</title>
 
 <style>
 body {
     margin:0;
     font-family: monospace;
-    background: radial-gradient(circle, #000, #111);
+    background:#000;
     color:white;
-    transition: 0.3s;
 }
 
 /* FX MODE */
 body.fx {
     background: radial-gradient(circle at center, #000, #050505, #000);
     background-size:200% 200%;
-    animation: bgMove 10s infinite alternate;
+    animation:bgMove 10s infinite alternate;
 }
-
 @keyframes bgMove {
     0%{background-position:0% 50%;}
     100%{background-position:100% 50%;}
@@ -28,46 +26,29 @@ body.fx {
 /* MESSAGE */
 #msg {
     text-align:center;
-    padding:12px;
-    background:#111;
+    padding:10px;
     color:#0ff;
-    box-shadow:0 0 15px cyan;
 }
 
 /* CARDS */
 .card {
     display:inline-block;
     padding:15px;
-    margin:6px;
+    margin:5px;
     border:2px solid white;
     border-radius:10px;
     cursor:pointer;
-    transition:0.2s;
 }
-body.fx .card:hover {
-    transform:scale(1.2) rotate(2deg);
-    box-shadow:0 0 25px cyan,0 0 40px cyan;
-}
-.selected {
-    box-shadow:0 0 25px cyan;
-}
+.selected { box-shadow:0 0 20px cyan; }
 
 /* DISCARD */
 .discard-card {
-    width:90px;
-    height:120px;
+    width:90px;height:120px;
     margin:auto;
     border:2px solid red;
     display:flex;
     align-items:center;
     justify-content:center;
-}
-body.fx .discard-card {
-    animation:pulseRed 2s infinite;
-}
-@keyframes pulseRed {
-    from{box-shadow:0 0 10px red;}
-    to{box-shadow:0 0 30px red;}
 }
 
 /* MELDS */
@@ -76,50 +57,30 @@ body.fx .discard-card {
     border:2px solid cyan;
     padding:10px;
     margin:5px;
-    border-radius:10px;
-}
-body.fx .meld {
-    animation:glowMeld 2s infinite alternate;
-}
-@keyframes glowMeld {
-    from{box-shadow:0 0 10px cyan;}
-    to{box-shadow:0 0 30px cyan;}
 }
 
-/* WAR */
-#warScreen {
+/* OVERLAYS */
+#aiOverlay, #warScreen {
     position:fixed;
     top:0;left:0;
     width:100%;height:100%;
-    background:black;
     display:none;
-    flex-direction:column;
     justify-content:center;
     align-items:center;
-    font-size:50px;
+    flex-direction:column;
+    font-size:40px;
+    background:rgba(0,0,0,0.9);
+    z-index:2000;
 }
-#warContent { margin-bottom:30px; }
+
 #warHint {
     font-size:18px;
     opacity:0.7;
+    margin-top:20px;
     animation:blink 1s infinite alternate;
 }
 @keyframes blink {
-    from{opacity:0.3;}
-    to{opacity:1;}
-}
-
-/* AI */
-#aiOverlay {
-    position:fixed;
-    top:0;left:0;
-    width:100%;height:100%;
-    background:rgba(0,0,0,0.85);
-    display:none;
-    justify-content:center;
-    align-items:center;
-    font-size:40px;
-    color:yellow;
+    from{opacity:0.3;} to{opacity:1;}
 }
 
 /* CONFIRM */
@@ -130,18 +91,6 @@ body.fx .meld {
     display:none;
     justify-content:center;
     align-items:center;
-}
-#confirmBox {
-    background:#111;
-    padding:20px;
-    border-radius:10px;
-}
-
-/* BUTTON */
-button {
-    margin:5px;
-    padding:10px;
-    cursor:pointer;
 }
 </style>
 </head>
@@ -165,39 +114,35 @@ button {
 <div style="text-align:center;color:cyan;">TABLE MELDS</div>
 <div id="melds"></div>
 
-<!-- CONFIRM -->
 <div id="confirmOverlay">
-<div id="confirmBox">
+<div style="background:#111;padding:20px;">
 <div id="confirmText"></div>
 <button onclick="confirmDiscard()">Yes</button>
 <button onclick="cancelDiscard()">No</button>
 </div>
 </div>
 
-<!-- WAR -->
+<div id="aiOverlay"></div>
+
 <div id="warScreen">
 <div id="warContent"></div>
 <div id="warHint">Click to continue...</div>
 </div>
 
-<!-- AI -->
-<div id="aiOverlay">AI THINKING...</div>
-
 <script>
-// DATA
+// -------- DATA --------
 const order=["2","3","4","5","6","7","8","9","X","J","Q","K","A","🤡"];
 const suits=["♣","♦","♥","♠"];
 
 let deck=[],player=[],ai=[],discard=[];
 let selected=[],mustDiscard=false;
 let tableMelds=[];
+let pending=null;
 
-// FX TOGGLE
-function toggleFX(){
-    document.body.classList.toggle("fx");
-}
+// -------- FX --------
+function toggleFX(){ document.body.classList.toggle("fx"); }
 
-// BUILD
+// -------- BUILD --------
 for(let s of suits) for(let c of order) deck.push(s+c);
 deck.sort(()=>Math.random()-0.5);
 
@@ -205,7 +150,7 @@ player=deck.splice(0,7);
 ai=deck.splice(0,7);
 discard=[deck.shift()];
 
-// MESSAGE QUEUE
+// -------- MESSAGE --------
 let q=[],busy=false;
 function msg(t){
     q.push(t);
@@ -218,10 +163,11 @@ function show(){
     setTimeout(show,1400);
 }
 
-// RENDER
+// -------- RENDER --------
 function render(){
     let p=document.getElementById("player");
     p.innerHTML="";
+
     player.forEach((c,i)=>{
         let d=document.createElement("div");
         d.className="card";
@@ -231,8 +177,10 @@ function render(){
 
         d.onclick=()=>{
             if(mustDiscard){ askDiscard(i); return; }
+
             if(selected.includes(i)) selected=selected.filter(x=>x!=i);
             else if(selected.length<3) selected.push(i);
+
             render();
         };
 
@@ -258,7 +206,7 @@ function render(){
     });
 }
 
-// DRAW
+// -------- DRAW --------
 function drawDeck(){
     if(mustDiscard){msg("Discard first");return;}
     player.push(deck.shift());
@@ -266,7 +214,6 @@ function drawDeck(){
     msg("Choose discard");
     render();
 }
-
 function drawDiscard(){
     if(mustDiscard){msg("Discard first");return;}
     player.push(discard.shift());
@@ -275,17 +222,16 @@ function drawDiscard(){
     render();
 }
 
-// DISCARD
-let pending=null;
+// -------- DISCARD --------
 function askDiscard(i){
     pending=i;
-    document.getElementById("confirmText").textContent="Discard "+player[i]+"?";
     document.getElementById("confirmOverlay").style.display="flex";
+    document.getElementById("confirmText").textContent="Discard "+player[i]+"?";
 }
 function confirmDiscard(){
-    document.getElementById("confirmOverlay").style.display="none";
     discard.unshift(player.splice(pending,1)[0]);
     mustDiscard=false;
+    document.getElementById("confirmOverlay").style.display="none";
     render();
     aiTurn();
 }
@@ -293,25 +239,49 @@ function cancelDiscard(){
     document.getElementById("confirmOverlay").style.display="none";
 }
 
-// MELD
+// -------- MELD --------
 function meldCheck(c){
     let r=c.map(x=>x.slice(1));
     if(r[0]==r[1]&&r[1]==r[2]) return true;
+
     let s=c.map(x=>x[0]);
     let i=c.map(x=>order.indexOf(x.slice(1))).sort((a,b)=>a-b);
-    return s[0]==s[1]&&s[1]==s[2]&&i[0]+1==i[1]&&i[1]+1==i[2];
+
+    return s[0]==s[1]&&s[1]==s[2] &&
+           i[0]+1==i[1]&&i[1]+1==i[2];
+}
+
+function hasRun(melds){
+    for(let m of melds){
+        let s=m.map(c=>c[0]);
+        let i=m.map(c=>order.indexOf(c.slice(1))).sort((a,b)=>a-b);
+
+        if(s[0]==s[1]&&s[1]==s[2] &&
+           i[0]+1==i[1]&&i[1]+1==i[2]){
+            return true;
+        }
+    }
+    return false;
 }
 
 async function layMeld(){
     if(selected.length!=3){msg("Select 3 cards");return;}
+
     let m=selected.map(i=>player[i]);
 
     if(meldCheck(m)){
         selected.sort((a,b)=>b-a).forEach(i=>player.splice(i,1));
         tableMelds.push(m);
+
         msg("You melded "+m.join(", "));
+
+        if(tableMelds.length>=2 && hasRun(tableMelds)){
+            invade("YOU DECLARED RUMMY!");
+            return;
+        }
+
     } else {
-        msg("WAR!");
+        invade("⚔️ WAR TRIGGERED ⚔️");
         await war();
     }
 
@@ -321,14 +291,28 @@ async function layMeld(){
     aiTurn();
 }
 
-// WAR
+// -------- OVERLAY --------
+function invade(text){
+    let o=document.getElementById("aiOverlay");
+    o.innerHTML=text;
+    o.style.display="flex";
+
+    setTimeout(()=>{
+        o.style.display="none";
+        o.innerHTML="";
+    },1500);
+}
+
+// -------- WAR --------
 async function type(text){
     let c=document.getElementById("warContent");
     c.innerHTML="";
+
     for(let ch of text){
         c.innerHTML+=ch;
         await new Promise(r=>setTimeout(r,35));
     }
+
     await new Promise(res=>{
         function done(){
             document.removeEventListener("click",done);
@@ -352,22 +336,29 @@ async function war(){
 
         if(order.indexOf(p.slice(1))>order.indexOf(c.slice(1))){
             player.push(p,c);
-            await type("PLAYER WINS");
+            await type("PLAYER WINS ROUND");
         } else if(order.indexOf(p.slice(1))<order.indexOf(c.slice(1))){
             ai.push(p,c);
-            await type("AI WINS");
+            await type("AI WINS ROUND");
         } else {
             await type("WAR!");
         }
 
         moves++;
-        if(moves>5) break;
+        if(moves>5){
+            if(player.length>ai.length){
+                await type("PLAYER WINS WAR");
+            } else {
+                await type("AI WINS WAR");
+            }
+            break;
+        }
     }
 
     w.style.display="none";
 }
 
-// AI
+// -------- AI --------
 function combinations(a){
     let r=[];
     for(let i=0;i<a.length;i++)
@@ -381,25 +372,41 @@ function score(c,h){
     let r=c.slice(1),s=c[0];
     let sc=h.filter(x=>x.slice(1)==r).length;
     let idx=order.indexOf(r);
+
     h.forEach(x=>{
-        if(x[0]==s && Math.abs(order.indexOf(x.slice(1))-idx)<=2) sc++;
+        if(x[0]==s && Math.abs(order.indexOf(x.slice(1))-idx)<=2){
+            sc++;
+        }
     });
     return sc;
 }
 
 function aiTurn(){
-    document.getElementById("aiOverlay").style.display="flex";
-
     setTimeout(()=>{
-        let draw = Math.random()<0.5?deck.shift():discard.shift();
-        ai.push(draw);
-        msg("AI picked a card");
+        let drawn;
+
+        if(Math.random()<0.5 && discard.length){
+            drawn=discard.shift();
+            invade("AI TOOK FROM DISCARD");
+        } else {
+            drawn=deck.shift();
+            invade("AI DREW FROM DECK");
+        }
+
+        ai.push(drawn);
 
         for(let comb of combinations(ai)){
             if(meldCheck(comb)){
                 comb.forEach(c=>ai.splice(ai.indexOf(c),1));
                 tableMelds.push(comb);
-                msg("AI melded "+comb.join(", "));
+
+                invade("AI MELDED: "+comb.join(", "));
+
+                if(tableMelds.length>=2 && hasRun(tableMelds)){
+                    invade("AI DECLARES RUMMY!");
+                    return;
+                }
+
                 break;
             }
         }
@@ -412,16 +419,16 @@ function aiTurn(){
 
         ai.splice(ai.indexOf(worst),1);
         discard.unshift(worst);
-        msg("AI discarded "+worst);
+
+        invade("AI DISCARDED: "+worst);
 
         render();
-        document.getElementById("aiOverlay").style.display="none";
         msg("Your Turn");
 
     },1200);
 }
 
-// START
+// -------- START --------
 render();
 </script>
 
