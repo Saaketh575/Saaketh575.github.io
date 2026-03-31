@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Rummy + War GOD MODE FINAL</title>
+<title>Rummy + War</title>
 
 <style>
 body {
@@ -10,24 +10,18 @@ body {
     font-family: monospace;
     background: radial-gradient(circle, #000, #111);
     color:white;
-    overflow:hidden;
 }
 
-/* MESSAGE BAR */
+/* MESSAGE */
 #msg {
-    position:fixed;
-    top:0;
-    width:100%;
     text-align:center;
     padding:10px;
     background:#111;
     color:#0ff;
-    font-size:18px;
-    box-shadow:0 0 10px cyan;
 }
 
 /* GAME */
-#game { text-align:center; padding-top:60px; }
+#game { text-align:center; padding:20px; }
 
 /* CARDS */
 .card {
@@ -37,49 +31,39 @@ body {
     border:2px solid white;
     border-radius:10px;
     cursor:pointer;
-    transition:0.2s;
 }
-.card:hover { transform:scale(1.2); }
 .selected { box-shadow:0 0 20px cyan; }
 
 /* DISCARD */
-#discard {
-    margin-top:20px;
-    height:140px;
-    position:relative;
-}
+#discard-area { margin-top:30px; }
+#discard-label { color:red; font-size:20px; }
 
 .discard-card {
-    position:absolute;
-    width:80px;
-    height:110px;
+    width:90px; height:120px;
     border:2px solid red;
-    border-radius:10px;
-    background:#111;
+    margin:auto;
     display:flex;
     align-items:center;
     justify-content:center;
     box-shadow:0 0 25px red;
-    animation: glow 1s infinite alternate;
 }
 
-@keyframes glow {
-    from { box-shadow:0 0 10px red; }
-    to { box-shadow:0 0 30px red; }
-}
-
-/* FLY */
-.fly {
+/* CONFIRM */
+#confirmBox {
     position:fixed;
-    z-index:999;
-    transition:all 0.6s ease;
+    bottom:20px;
+    left:50%;
+    transform:translateX(-50%);
+    background:#222;
+    padding:15px;
+    display:none;
 }
 
 /* WAR */
 #warScreen {
     position:fixed;
-    top:0; left:0;
-    width:100%; height:100%;
+    top:0;left:0;
+    width:100%;height:100%;
     background:black;
     display:none;
     justify-content:center;
@@ -87,15 +71,17 @@ body {
     font-size:60px;
 }
 
-/* AI TURN */
-#aiBanner {
+/* AI OVERLAY */
+#aiOverlay {
     position:fixed;
-    top:40px;
-    width:100%;
-    text-align:center;
-    font-size:25px;
-    color:yellow;
+    top:0;left:0;
+    width:100%;height:100%;
+    background:rgba(0,0,0,0.8);
     display:none;
+    justify-content:center;
+    align-items:center;
+    font-size:40px;
+    color:yellow;
 }
 </style>
 </head>
@@ -103,62 +89,64 @@ body {
 <body>
 
 <div id="msg">Your Turn</div>
-<div id="aiBanner">AI TURN</div>
 
 <div id="game">
 <h1>Rummy + War</h1>
 
 <div id="player"></div>
+
+<div id="discard-area">
+<div id="discard-label">DISCARD PILE</div>
 <div id="discard"></div>
+</div>
 
 <button onclick="drawDeck()">Draw Deck</button>
 <button onclick="drawDiscard()">Draw Discard</button>
 <button onclick="layMeld()">Lay Meld</button>
 </div>
 
+<div id="confirmBox">
+<span id="confirmText"></span><br>
+<button onclick="confirmDiscard()">Yes</button>
+<button onclick="cancelDiscard()">No</button>
+</div>
+
 <div id="warScreen"></div>
+<div id="aiOverlay">AI THINKING...</div>
 
 <script>
-// ---------- GLOBAL ----------
+// -------- GLOBAL --------
 const order=["2","3","4","5","6","7","8","9","X","J","Q","K","A","🤡"];
 const suits=["♣","♦","♥","♠"];
 
 let deck=[],player=[],ai=[],discard=[];
 let selected=[],mustDiscard=false;
+let pendingIndex=null,pendingEl=null;
 
-for(let s of suits)
-for(let c of order) deck.push(s+c);
-
+// DECK
+for(let s of suits) for(let c of order) deck.push(s+c);
 deck.sort(()=>Math.random()-0.5);
 
 player=deck.splice(0,7);
 ai=deck.splice(0,7);
 discard=[deck.shift()];
 
-// ---------- MESSAGE ----------
+// -------- MSG --------
 function msg(t){ document.getElementById("msg").textContent=t; }
 
-// ---------- RENDER ----------
+// -------- RENDER --------
 function render(){
-    let p=document.getElementById("player");
-    p.innerHTML="";
-
+    let p=document.getElementById("player"); p.innerHTML="";
     player.forEach((c,i)=>{
         let d=document.createElement("div");
-        d.className="card";
-        d.textContent=c;
+        d.className="card"; d.textContent=c;
 
         if(selected.includes(i)) d.classList.add("selected");
 
         d.onclick=(e)=>{
-            if(mustDiscard){
-                discardCard(i,e.target);
-                return;
-            }
-
+            if(mustDiscard){ askDiscard(i,e.target); return; }
             if(selected.includes(i)) selected=selected.filter(x=>x!=i);
             else if(selected.length<3) selected.push(i);
-
             render();
         };
 
@@ -175,56 +163,40 @@ function render(){
     }
 }
 
-// ---------- DRAW ----------
+// -------- DRAW --------
 function drawDeck(){
-    if(mustDiscard){ msg("You must discard first!"); return; }
+    if(mustDiscard){ msg("Discard first"); return; }
     player.push(deck.shift());
     mustDiscard=true;
-    msg("Pick a card to discard");
+    msg("Choose a card to discard");
     render();
 }
-
 function drawDiscard(){
-    if(mustDiscard){ msg("You must discard first!"); return; }
+    if(mustDiscard){ msg("Discard first"); return; }
     player.push(discard.shift());
     mustDiscard=true;
-    msg("Pick a card to discard");
+    msg("Choose a card to discard");
     render();
 }
 
-// ---------- DISCARD ----------
-function animateDiscard(card,el){
-    let r=el.getBoundingClientRect();
-    let f=document.createElement("div");
-    f.className="card fly";
-    f.textContent=card;
-    f.style.left=r.left+"px";
-    f.style.top=r.top+"px";
-    document.body.appendChild(f);
-
-    let target=document.getElementById("discard").getBoundingClientRect();
-    setTimeout(()=>{
-        f.style.left=target.left+"px";
-        f.style.top=target.top+"px";
-    },10);
-
-    setTimeout(()=>f.remove(),600);
+// -------- DISCARD --------
+function askDiscard(i,el){
+    pendingIndex=i; pendingEl=el;
+    document.getElementById("confirmText").textContent="Discard "+player[i]+"?";
+    document.getElementById("confirmBox").style.display="block";
+}
+function confirmDiscard(){
+    document.getElementById("confirmBox").style.display="none";
+    discard.unshift(player.splice(pendingIndex,1)[0]);
+    mustDiscard=false;
+    render();
+    aiTurn();
+}
+function cancelDiscard(){
+    document.getElementById("confirmBox").style.display="none";
 }
 
-function discardCard(i,el){
-    let c=player[i];
-    animateDiscard(c,el);
-
-    setTimeout(()=>{
-        discard.unshift(player.splice(i,1)[0]);
-        mustDiscard=false;
-        msg("AI thinking...");
-        render();
-        aiTurn();
-    },600);
-}
-
-// ---------- MELD ----------
+// -------- MELD --------
 function meldCheck(c){
     if(c.length!=3)return false;
     let r=c.map(x=>x.slice(1));
@@ -246,7 +218,7 @@ async function layMeld(){
         selected.sort((a,b)=>b-a).forEach(i=>player.splice(i,1));
         msg("Meld placed!");
     } else {
-        msg("Invalid meld → WAR");
+        msg("Invalid meld → WAR!");
         await warGame();
     }
 
@@ -256,33 +228,87 @@ async function layMeld(){
     aiTurn();
 }
 
-// ---------- WAR ----------
+// -------- TYPEWRITER --------
+async function type(text){
+    let w=document.getElementById("warScreen");
+    w.innerHTML="";
+    for(let c of text){
+        w.innerHTML+=c;
+        await new Promise(r=>setTimeout(r,40));
+    }
+}
+
+// -------- WAR (REAL) --------
 async function warGame(){
     let w=document.getElementById("warScreen");
     w.style.display="flex";
-    w.innerHTML="⚔️ WAR ⚔️";
-    await delay(1000);
+
+    let table=[],moves=0;
+
+    while(true){
+        if(player.length<2||ai.length<2){
+            await type("TIE");
+            break;
+        }
+
+        let p=player.shift();
+        let c=ai.shift();
+
+        table.push(p,c);
+
+        await type(p+" vs "+c);
+
+        if(order.indexOf(p.slice(1))>order.indexOf(c.slice(1))){
+            await type("PLAYER WINS ROUND");
+            player.push(...table);
+            table=[]; moves++;
+        } else if(order.indexOf(p.slice(1))<order.indexOf(c.slice(1))){
+            await type("AI WINS ROUND");
+            ai.push(...table);
+            table=[]; moves++;
+        } else {
+            await type("WAR!");
+            if(player.length<4||ai.length<4){
+                await type("TIE");
+                break;
+            }
+            table.push(...player.splice(0,3),...ai.splice(0,3));
+        }
+
+        if(moves>=10){
+            if(player.length>ai.length){
+                await type("PLAYER WINS WAR");
+                player.push(...deck.splice(0,1));
+            } else {
+                await type("AI WINS WAR");
+                ai.push(...deck.splice(0,1));
+            }
+            break;
+        }
+    }
+
+    await new Promise(r=>setTimeout(r,1000));
     w.style.display="none";
 }
 
-function delay(ms){return new Promise(r=>setTimeout(r,ms));}
-
-// ---------- AI ----------
+// -------- AI --------
 function aiTurn(){
-    document.getElementById("aiBanner").style.display="block";
+    let overlay=document.getElementById("aiOverlay");
+    overlay.style.display="flex";
 
     setTimeout(()=>{
+        // simple smart discard
         let worst=ai[0];
         ai.splice(ai.indexOf(worst),1);
         discard.unshift(worst);
 
         render();
-        document.getElementById("aiBanner").style.display="none";
+        overlay.style.display="none";
         msg("Your Turn");
-    },1000);
+    },1200);
 }
 
-// ---------- START ----------
+// -------- START --------
 render();
 </script>
 
